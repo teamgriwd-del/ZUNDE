@@ -1,0 +1,22 @@
+.App {
+  width: 100%;
+}
+
+.App-header {
+  background-color: #2e7d32;
+  padding: 20px;
+  color: white;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+}
+
+.App-header h1 {
+  margin: 0;
+}
+
+footer {
+  margin-top: 3rem;
+  padding: 1rem;
+  color: #888;
+  font-size: 0.9rem;
+}

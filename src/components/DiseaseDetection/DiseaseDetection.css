@@ -1,0 +1,72 @@
+.zunde-disease-module {
+  background: #f9f9f9;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 2rem auto;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.zunde-disease-module h2 {
+  color: #2e7d32;
+  margin-bottom: 0.5rem;
+}
+
+.description {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.symptom-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.symptom-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  background: #fff;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  transition: all 0.2s;
+}
+
+.symptom-label:hover {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.analyze-btn {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.2s;
+}
+
+.analyze-btn:hover {
+  background: #1b5e20;
+}
+
+.results-panel {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #e8f5e9;
+  border-left: 5px solid #2e7d32;
+  border-radius: 4px;
+}
+
+.results-panel h3 {
+  color: #1b5e20;
+  margin-top: 0;
+}
