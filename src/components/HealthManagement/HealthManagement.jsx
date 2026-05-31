@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { HEALTH_PROTOCOLS } from './healthData';
 import './HealthManagement.css';
 
-const HealthManagement = ({ animals }) => {
+const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog, setAuditLog }) => {
   const [selectedAnimalId, setSelectedAnimalId] = useState('');
   const [gestationStart, setGestationStart] = useState('');
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const [auditLog, setAuditLog] = useState([]);
 
   const selectedAnimal = animals.find(a => a.id == selectedAnimalId);
 
@@ -75,6 +73,7 @@ const HealthManagement = ({ animals }) => {
     setCompletedTasks([...completedTasks, taskId]);
     setAuditLog([{
       id: Date.now(),
+      animalId: selectedAnimal.id, // Linked by ID now
       animal: selectedAnimal.name,
       action: taskName,
       date: new Date().toLocaleString()
@@ -161,8 +160,8 @@ const HealthManagement = ({ animals }) => {
           <div className="health-card audit">
             <h3>Recent Activity Audit</h3>
             <div className="audit-list">
-              {auditLog.length === 0 ? <p className="hint">No health actions recorded yet.</p> : (
-                auditLog.filter(log => log.animal === selectedAnimal.name).map(log => (
+              {auditLog.filter(log => log.animalId === selectedAnimal.id).length === 0 ? <p className="hint">No health actions recorded yet.</p> : (
+                auditLog.filter(log => log.animalId === selectedAnimal.id).map(log => (
                   <div key={log.id} className="log-entry">
                     <span className="log-action">{log.action}</span>
                     <span className="log-date">{log.date}</span>

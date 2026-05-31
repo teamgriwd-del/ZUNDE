@@ -9,10 +9,14 @@ import './App.css';
 function App() {
   const [animals, setAnimals] = useState([]);
   const [activeTab, setActiveTab] = useState('profile');
+  
+  // Lifted state for cross-module data sharing
+  const [completedTasks, setCompletedTasks] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
 
   const addAnimal = (newAnimal) => {
     setAnimals([...animals, newAnimal]);
-    setActiveTab('health'); // Switch to health management after adding
+    setActiveTab('profile'); // Keep on profile to see the new card
   };
 
   return (
@@ -32,26 +36,27 @@ function App() {
 
       <main className="zunde-main">
         {activeTab === 'profile' && (
-          <div className="tab-content">
-            <AnimalProfile onAddAnimal={addAnimal} />
-            <div className="zunde-card animal-list">
-              <h3>My Animals</h3>
-              {animals.length === 0 ? <p>No animals registered yet.</p> : (
-                <ul>
-                  {animals.map(a => (
-                    <li key={a.id}>
-                      <strong>{a.name}</strong> - {a.breed} ({a.species}) | Age: {a.age}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          <AnimalProfile 
+            animals={animals} 
+            onAddAnimal={addAnimal} 
+            auditLog={auditLog}
+          />
         )}
         
-        {activeTab === 'health' && <HealthManagement animals={animals} />}
+        {activeTab === 'health' && (
+          <HealthManagement 
+            animals={animals} 
+            completedTasks={completedTasks}
+            setCompletedTasks={setCompletedTasks}
+            auditLog={auditLog}
+            setAuditLog={setAuditLog}
+          />
+        )}
+        
         {activeTab === 'disease' && <DiseaseDetection />}
-        {activeTab === 'vet' && <VetCommunication />}
+        
+        {activeTab === 'vet' && <VetCommunication animals={animals} />}
+        
         {activeTab === 'iot' && <HardwareSimulation />}
       </main>
 
