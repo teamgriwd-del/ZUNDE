@@ -29,16 +29,18 @@ The digital record-keeper for the herd.
 - **Automated Age Calculator:** Dynamically updates animal age based on birth date.
 - **Pedigree Tracking:** (Upcoming) Foundation for tracking ancestry and breed purity.
 
-### 5. Hardware Simulation (IoT)
-A real-time telemetry dashboard simulating on-animal health sensors.
-- **Live Feed:** Monitor temperature and activity levels.
-- **Smart Alerts:** Visual triggers when sensor data indicates a fever or abnormal behavior.
+### 5. Hardware Simulation (IoT) & Proteus Bridge
+A high-tech command center for real-time and historical health monitoring.
+- **Live Health Metrics:** Real-time tracking of Temperature, Heart Rate (BPM), and Activity.
+- **Historical Trend Charts:** Integrated **Recharts** for visualizing health vitals over the last 15 cycles.
+- **Simulated Geofencing:** GPS tracking with "Safe Zone" monitoring. Triggers **Perimeter Breach** alerts if animals stray.
+- **Proteus Integration:** Ready-to-use bridge for physical circuit simulation. Includes Arduino firmware and Proteus schematic guidance in `IOT_HARDWARE_GUIDE.md`.
 
 ## 🛠️ Technical Stack
 - **Frontend:** React (Vite)
-- **Styling:** Custom CSS (Enterprise UI)
-- **Logic:** Weighted Diagnostic Algorithms & Time-based Lifecycle Engines
-- **State Management:** React Hooks (useState, useEffect)
+- **Data Visualization:** Recharts
+- **Icons:** Lucide-React
+- **Hardware Integration:** Proteus, Arduino (C++), Serial COMPIM Bridge.
 
 ## 🌍 Target Market
 Specifically designed for the **Zimbabwean agricultural landscape**, addressing the needs of both small-scale communal farmers and large-scale commercial livestock producers.
