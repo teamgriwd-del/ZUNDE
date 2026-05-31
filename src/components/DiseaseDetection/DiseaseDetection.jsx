@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { diseaseDatabase, symptomCategories } from './diseaseData';
 import './DiseaseDetection.css';
 
-const DiseaseDetection = () => {
+const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [diagnosisResults, setDiagnosisResults] = useState([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
+  const [targetAnimalId, setTargetAnimalId] = useState('');
 
   const handleCheckboxChange = (symptom) => {
     setSelectedSymptoms(prev => 
@@ -26,7 +27,6 @@ const DiseaseDetection = () => {
       let score = 0;
       let maxPossibleScore = 0;
 
-      // Weighting Logic: Primary (10), Secondary (5)
       disease.symptoms.primary.forEach(s => {
         maxPossibleScore += 10;
         if (selectedSymptoms.includes(s)) score += 10;
@@ -40,11 +40,26 @@ const DiseaseDetection = () => {
       const confidence = Math.round((score / maxPossibleScore) * 100);
       return { ...disease, confidence };
     })
-    .filter(res => res.confidence > 20) // Only show relevant matches
+    .filter(res => res.confidence > 20)
     .sort((a, b) => b.confidence - a.confidence);
 
     setDiagnosisResults(results);
     setHasAnalyzed(true);
+  };
+
+  const saveToHistory = (diseaseName) => {
+    if (!targetAnimalId || !onAddAuditLog) return;
+    const animal = animals.find(a => a.id == targetAnimalId);
+    if (!animal) return;
+
+    onAddAuditLog({
+      id: Date.now(),
+      animalId: animal.id,
+      animal: animal.name,
+      action: `Diagnostic: ${diseaseName}`,
+      date: new Date().toLocaleString()
+    });
+    alert(`Diagnosis saved to ${animal.name}'s history!`);
   };
 
   return (
@@ -85,7 +100,19 @@ const DiseaseDetection = () => {
 
       {hasAnalyzed && diagnosisResults.length > 0 ? (
         <div className="results-container">
-          <h3>Analysis Results</h3>
+          <div className="results-header-box">
+            <h3>Analysis Results</h3>
+            {animals.length > 0 && (
+              <div className="save-selector">
+                <label>Target Animal:</label>
+                <select value={targetAnimalId} onChange={e => setTargetAnimalId(e.target.value)}>
+                  <option value="">Select animal to link...</option>
+                  {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          
           {diagnosisResults.map((res, index) => (
             <div key={res.id} className={`result-card ${index === 0 ? 'top-match' : ''}`}>
               <div className="result-header">
@@ -106,7 +133,10 @@ const DiseaseDetection = () => {
                 <div className="detailed-plan">
                   <div className="plan-meta">
                     {res.quarantineRequired && <span className="alert-tag">QUARANTINE REQUIRED</span>}
-                    {res.severity === 'Critical' && <button className="urgent-vet-btn">Contact Veterinarian Now</button>}
+                    <div className="result-actions">
+                      {targetAnimalId && <button className="save-btn" onClick={() => saveToHistory(res.name)}>Save to Profile</button>}
+                      {res.severity === 'Critical' && <button className="urgent-vet-btn">Contact Vet</button>}
+                    </div>
                   </div>
                   <h5>Action Plan:</h5>
                   <ul>
