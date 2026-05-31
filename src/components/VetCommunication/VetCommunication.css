@@ -1,0 +1,55 @@
+.vet-comm-module {
+  text-align: left;
+}
+
+.chat-window {
+  height: 200px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.message {
+  padding: 0.5rem 0.8rem;
+  border-radius: 12px;
+  max-width: 80%;
+}
+
+.message.vet {
+  background: #e1f5fe;
+  align-self: flex-start;
+  border-bottom-left-radius: 2px;
+}
+
+.message.farmer {
+  background: #e8f5e9;
+  align-self: flex-end;
+  border-bottom-right-radius: 2px;
+}
+
+.chat-input {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.chat-input button {
+  background: #2e7d32;
+  color: white;
+  border: none;
+  padding: 0 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}

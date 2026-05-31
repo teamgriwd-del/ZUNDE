@@ -1,0 +1,47 @@
+.hardware-sim-module {
+  text-align: left;
+}
+
+.sensor-display {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.sensor-tile {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.sensor-tile .label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.sensor-tile .value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #2e7d32;
+}
+
+.sensor-tile .value.danger {
+  color: #d32f2f;
+}
+
+.sensor-tile .value.safe {
+  color: #388e3c;
+}
+
+.note {
+  font-size: 0.8rem;
+  color: #999;
+  font-style: italic;
+}

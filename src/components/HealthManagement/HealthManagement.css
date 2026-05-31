@@ -1,0 +1,51 @@
+.health-mgmt-module {
+  text-align: left;
+}
+
+.module-section {
+  margin-bottom: 2rem;
+}
+
+.module-section h4 {
+  color: #2e7d32;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.gestation-inputs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gestation-inputs select, .gestation-inputs input {
+  padding: 0.5rem;
+  flex: 1;
+}
+
+.alert-box {
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.7rem;
+  background: #f1f8e9;
+  border-radius: 4px;
+  border: 1px solid #c5e1a5;
+}
+
+.task-date {
+  font-weight: bold;
+  color: #388e3c;
+}

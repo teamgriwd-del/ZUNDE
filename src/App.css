@@ -1,22 +1,77 @@
 .App {
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .App-header {
   background-color: #2e7d32;
-  padding: 20px;
+  padding: 1.5rem;
   color: white;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   border-radius: 8px;
+  text-align: center;
 }
 
-.App-header h1 {
-  margin: 0;
+.zunde-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.zunde-nav button {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #2e7d32;
+  background: white;
+  color: #2e7d32;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.zunde-nav button.active {
+  background: #2e7d32;
+  color: white;
+}
+
+.zunde-card {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #eee;
+  margin-bottom: 1.5rem;
+}
+
+.zunde-card h3 {
+  margin-top: 0;
+  color: #2e7d32;
+  border-bottom: 2px solid #e8f5e9;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.animal-list ul {
+  list-style: none;
+  padding: 0;
+  text-align: left;
+}
+
+.animal-list li {
+  padding: 0.8rem;
+  background: white;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #eee;
 }
 
 footer {
   margin-top: 3rem;
-  padding: 1rem;
+  padding: 2rem;
   color: #888;
   font-size: 0.9rem;
+  text-align: center;
 }
