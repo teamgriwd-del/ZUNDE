@@ -21,7 +21,91 @@
   gap: 1.5rem;
 }
 
-.iot-header h2 { margin: 0; font-size: 1.4rem; }
+.confidence-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fbc02d;
+  color: #1b5e20;
+  padding: 0.3rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.vitality-summary {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 1px solid #eee;
+  text-align: left;
+}
+
+.vitality-meter {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.vitality-meter label {
+  font-weight: bold;
+  font-size: 0.9rem;
+  min-width: 150px;
+}
+
+.vitality-bar-bg {
+  flex: 1;
+  height: 12px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.vitality-fill {
+  height: 100%;
+  background: #2e7d32;
+  transition: width 1s ease-in-out;
+}
+
+.vitality-fill.poor { background: #d32f2f; }
+
+.vitality-val {
+  font-weight: 900;
+  color: #1b5e20;
+  min-width: 50px;
+}
+
+.sensor-fusion-hint {
+  font-size: 0.75rem;
+  color: #888;
+  margin: 0;
+}
+
+.filter-tag {
+  font-size: 0.6rem;
+  color: #2e7d32;
+  background: #e8f5e9;
+  padding: 0.1rem 0.3rem;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.assurance-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.assurance-item {
+  font-size: 0.85rem;
+  color: #2e7d32;
+  font-weight: 600;
+  padding: 0.5rem;
+  background: #f1f8e9;
+  border-radius: 6px;
+}
 
 .live-tag {
   background: rgba(255,255,255,0.1);
