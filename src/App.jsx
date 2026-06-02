@@ -4,7 +4,7 @@ import AnimalProfile from './components/AnimalProfile/AnimalProfile';
 import HealthManagement from './components/HealthManagement/HealthManagement';
 import VetCommunication from './components/VetCommunication/VetCommunication';
 import HardwareSimulation from './components/HardwareSimulation/HardwareSimulation';
-import ZundeIntelAI from './components/IntelAI/ZundeIntelAI';
+import JindaRaMambo from './components/IntelAI/ZundeIntelAI';
 import { 
   LayoutDashboard, Users, HeartPulse, Stethoscope, MessageSquare, Radio, 
   Search, Bell, LogOut, ShieldCheck, ChevronRight 
@@ -83,7 +83,6 @@ const INITIAL_LOGS = [
   { id: 4, animalId: 102, animal: "Thunder", action: "Routine Checkup", date: "3/02/2026, 11:45 AM" }
 ];
 
-// --- DESIGN 1: Scoring Dashboard Style ---
 const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
   const criticalCount = auditLog.filter(log => log.action.includes('Critical') || log.action.includes('Diagnostic: Suspected')).length;
   const avgHealth = animals.length > 0 ? 88 : 0;
@@ -99,7 +98,7 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
       <header className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 text-left">Operational Overview</h2>
-          <p className="text-sm text-gray-400 font-bold uppercase tracking-widest text-left">Enterprise Feed • Live Updates</p>
+          <p className="text-sm text-gray-400 font-bold uppercase tracking-widest text-left">ZUNDE RaMambo • Live Intelligence</p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="relative">
@@ -113,12 +112,11 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
         </div>
       </header>
 
-      {/* Top Metrics Row */}
       <div className="grid grid-cols-4 gap-6 mb-8 text-left">
         <div className="p-6 bg-gradient-to-br from-zunde-green to-green-700 text-white rounded-2xl shadow-lg transform transition hover:scale-105 cursor-pointer" onClick={() => setActiveTab('profile')}>
-          <div className="text-sm font-semibold opacity-80 uppercase mb-1">Total Herd</div>
+          <div className="text-sm font-semibold opacity-80 uppercase mb-1">Royal Herd</div>
           <div className="text-4xl font-black">{animals.length}</div>
-          <div className="text-xs mt-2 flex items-center"><ShieldCheck size={12} className="mr-1"/> Digital ID Active</div>
+          <div className="text-xs mt-2 flex items-center"><ShieldCheck size={12} className="mr-1"/> RaMambo Identity Active</div>
         </div>
         <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transform transition hover:scale-105">
           <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Health Index</div>
@@ -139,7 +137,6 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Middle Charts Section */}
       <div className="grid grid-cols-3 gap-8 mb-8 text-left">
         <div className="col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-700 mb-6 uppercase tracking-tighter">Herd Condition</h3>
@@ -165,7 +162,7 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
 
         <div className="col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-gray-700 uppercase tracking-tighter">Enterprise Activity Log</h3>
+            <h3 className="text-lg font-bold text-gray-700 uppercase tracking-tighter">RaMambo Activity Log</h3>
             <button className="text-zunde-green text-xs font-black flex items-center hover:underline uppercase" onClick={() => setActiveTab('health')}>
               View Full Audit <ChevronRight size={14} />
             </button>
@@ -202,7 +199,6 @@ function App() {
   const [auditLog, setAuditLog] = useState(INITIAL_LOGS);
 
   const addAnimal = (newAnimal) => {
-    // Assign a realistic livestock image based on species
     const images = {
         'Cattle': 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&q=80&w=800',
         'Goat': 'https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&q=80&w=800',
@@ -220,11 +216,10 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
-      {/* FIXED SIDEBAR */}
       <aside className="w-72 bg-zunde-green text-white flex flex-col shrink-0">
         <div className="p-8 flex items-center space-x-3">
-          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-zunde-green font-black text-2xl">Z</div>
-          <span className="text-2xl font-black tracking-tighter">ZUNDE <small className="text-[10px] font-bold opacity-60 ml-1">PRO</small></span>
+          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-zunde-green font-black text-2xl">R</div>
+          <span className="text-xl font-black tracking-tighter">ZUNDE RaMambo</span>
         </div>
         
         <nav className="flex-1 px-6 space-y-2 mt-4">
@@ -277,8 +272,8 @@ function App() {
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Arnold" alt="user" />
             </div>
             <div>
-              <div className="text-sm font-black text-left">Arnold Mapindu</div>
-              <div className="text-[10px] opacity-50 uppercase font-black tracking-widest text-left">Admin Farmer</div>
+              <div className="text-sm font-black text-left leading-none mb-1">Arnold Mapindu</div>
+              <div className="text-[9px] text-yellow-400 uppercase font-black tracking-widest text-left">Admin Farmer</div>
             </div>
           </div>
           <button className="w-full flex items-center justify-center space-x-2 py-3 border border-white/10 rounded-xl text-white/40 hover:text-white hover:bg-red-600/20 hover:border-red-600/20 transition text-sm font-bold uppercase tracking-tighter">
@@ -287,7 +282,6 @@ function App() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col overflow-hidden bg-white relative">
         {activeTab === 'dashboard' && (
           <ZundeDashboard animals={animals} auditLog={auditLog} setActiveTab={setActiveTab} />
@@ -317,8 +311,7 @@ function App() {
           {activeTab === 'iot' && <HardwareSimulation />}
         </div>
 
-        {/* ZUNDE INTEL AI - Floating Assistant */}
-        <ZundeIntelAI setActiveTab={setActiveTab} animals={animals} />
+        <JindaRaMambo setActiveTab={setActiveTab} animals={animals} />
       </main>
     </div>
   );
