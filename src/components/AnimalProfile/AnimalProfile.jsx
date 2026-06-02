@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   PlusCircle, Search, Filter, MoreHorizontal, 
-  ChevronRight, Calendar, Weight, Info, History 
+  ChevronRight, Calendar, Weight, Info, History, Users, ShieldCheck 
 } from 'lucide-react';
 import './AnimalProfile.css';
 
@@ -65,7 +65,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide text-left">
           {animals.length === 0 ? (
             <div className="bg-white p-12 rounded-3xl border-2 border-dashed border-gray-200 text-center flex flex-col items-center">
                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
@@ -82,7 +82,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
               >
                 <div className="w-24 h-24 rounded-2xl bg-gray-100 overflow-hidden mr-6 shrink-0 relative">
                   <div className="absolute inset-0 bg-gradient-to-tr from-zunde-green/20 to-transparent"></div>
-                  <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${a.name}`} alt="animal" className="w-full h-full object-cover" />
+                  <img src={a.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${a.name}`} alt="animal" className="w-full h-full object-cover transform transition group-hover:scale-110" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-1">
@@ -108,7 +108,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
       </div>
 
       {/* Right Column: Analytics Widgets */}
-      <div className="w-96 space-y-8 overflow-y-auto hidden xl:block">
+      <div className="w-96 space-y-8 overflow-y-auto hidden xl:block text-left">
         <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-black text-gray-800 mb-6 flex items-center">
             <Filter size={18} className="mr-2 text-zunde-green" /> Herd Composition
@@ -147,7 +147,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
 
   // --- DESIGN 2: Animal Detail View ---
   const renderDetailView = () => (
-    <div className="flex-1 overflow-y-auto p-8 bg-gray-50 h-full">
+    <div className="flex-1 overflow-y-auto p-8 bg-gray-50 h-full text-left">
       <button 
         onClick={() => setSelectedAnimalId(null)}
         className="flex items-center space-x-2 text-zunde-green font-black text-sm mb-6 hover:underline"
@@ -157,7 +157,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
 
       <div className="bg-white rounded-[40px] shadow-2xl overflow-hidden border border-gray-100 flex h-[450px]">
         <div className="w-2/5 relative">
-          <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${selectedAnimal.name}`} alt="cow" className="w-full h-full object-cover" />
+          <img src={selectedAnimal.imageUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${selectedAnimal.name}`} alt="cow" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-10">
             <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[4px] mb-2">Verified Identity</span>
             <h1 className="text-5xl font-black text-white leading-none">{selectedAnimal.name}</h1>
@@ -231,7 +231,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
   // --- Registration Modal ---
   if (isRegistering) {
     return (
-      <div className="flex-1 p-8 bg-gray-50">
+      <div className="flex-1 p-8 bg-gray-50 text-left">
         <div className="max-w-2xl mx-auto bg-white rounded-[40px] shadow-2xl p-12">
           <div className="flex justify-between items-center mb-10">
             <h3 className="text-3xl font-black text-gray-800">New Registration</h3>
