@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ZIMBABWE_REGIONS, LOCAL_ADVISORY, EMERGENCY_HOTLINES } from './vetData';
-import { Send, Plus, Search, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { Send, Plus, Search, MapPin, Phone, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 import './VetCommunication.css';
 
 const INITIAL_TICKETS = [
