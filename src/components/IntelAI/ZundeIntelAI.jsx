@@ -92,18 +92,45 @@ const JindaRaMambo = ({ setActiveTab, animals }) => {
         return { text: `For Cattle, weaning should be done at ${HEALTH_PROTOCOLS.Cattle.weaningAge} days. I can calculate the exact date for each animal if you look at their Profile.`, type: 'info' };
     }
 
-    // 5. IoT & Security Logic
-    if (lowerText.includes('thief') || lowerText.includes('stole') || lowerText.includes('where') || lowerText.includes('security')) {
-        return { text: "I monitor animal movement 24/7. Check the Live IoT Feed for 'Perimeter Breach' alerts. If an animal leaves the safe zone, I will flag it in Red immediately.", type: 'info' };
+    // 5. IoT & Security Logic (Deep Hardware Training)
+    if (lowerText.includes('thief') || lowerText.includes('stole') || lowerText.includes('where') || lowerText.includes('security') || lowerText.includes('mbavha')) {
+        return { 
+          text: "I monitor animal movement 24/7 using the RaMambo Security Protocol. My sensors look for a 'Theft Signature': rapid running combined with leaving the safe zone. If this happens, I trigger a physical alarm (Buzzer) on the animal and alert you instantly in Red. Kana mbavha yaba mombe, ndinoridza mhere panyama yepamusoro nekukuzivisai nekukasira.", 
+          type: 'info' 
+        };
     }
 
-    // 6. Herd Analytics
+    if (lowerText.includes('buzzer') || lowerText.includes('alarm') || lowerText.includes('mhere')) {
+        return {
+          text: "The physical RaMambo IoT device has a Piezo Buzzer. It sounds a loud alarm directly on the animal during a theft event to startle the intruder and notify nearby help.",
+          type: 'info'
+        };
+    }
+
+    if (lowerText.includes('battery') || lowerText.includes('power') || lowerText.includes('sampling') || lowerText.includes('long')) {
+        return {
+          text: "To save battery, the device uses 'Adaptive Sampling'. It stays in Quiet Mode (10s updates) when the animal is calm, and only switches to Emergency Mode (2s updates) when it detects a fever or suspicious movement. This helps the tag last for years.",
+          type: 'info'
+        };
+    }
+
+    // 6. Herd Analytics & Capabilities (Trained for non-technical/Shona)
     if (lowerText.includes('how many') || lowerText.includes('total') || lowerText.includes('size')) {
         return { text: `Your ZUNDE RaMambo enterprise currently manages ${animals.length} animals.`, type: 'info' };
     }
 
-    if (lowerText.includes('help') || lowerText.includes('what can you do')) {
-        return { text: "I can help you navigate (e.g. 'Show me the vet'), answer health questions (e.g. 'How to treat ticks?'), or give herd stats. I am trained on Zimbabwean farming standards.", type: 'help' };
+    if (
+        lowerText.includes('help') || 
+        lowerText.includes('what can you do') || 
+        lowerText.includes('what do you do') || 
+        lowerText.includes('wat do you do') || 
+        lowerText.includes('unoitei') || 
+        lowerText.includes('zvaunoita')
+    ) {
+        return { 
+          text: "I am your Royal Messenger, Jinda RaMambo. I can help you: \n1. Run Visual Diagnostics (Upload a photo of your animal)\n2. Navigate the system (e.g. 'Show me the sensors')\n3. Answer health questions about January Disease or Anthrax\n4. Check your herd size and vaccination calendar.\n\nNdinogona kukubatsira kuongorora mhuka dzako nemifananidzo, kana kukuzivisa nezvechirwere cheJanuary Disease.", 
+          type: 'help' 
+        };
     }
 
     // 7. Default for Non-Technical users

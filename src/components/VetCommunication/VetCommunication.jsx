@@ -47,6 +47,8 @@ const VetCommunication = ({ animals = [] }) => {
 
   const [chatInput, setChatInput] = useState('');
 
+  const [attachments, setAttachments] = useState([]);
+
   const handleCreateTicket = (e) => {
     e.preventDefault();
     const animalName = animals.find(a => a.id == newTicket.animalId)?.name || 'General Inquiry';
@@ -58,12 +60,17 @@ const VetCommunication = ({ animals = [] }) => {
       status: 'Pending',
       animal: animalName,
       priority: priority,
-      messages: [{ sender: 'Farmer', text: newTicket.description }]
+      messages: [{ sender: 'Farmer', text: newTicket.description, attachments: [...attachments] }]
     };
 
     setTickets([ticket, ...tickets]);
     setIsCreating(false);
     setNewTicket({ category: 'Emergency', animalId: '', province: '', district: '', subject: '', description: '' });
+    setAttachments([]);
+  };
+
+  const simulateAttachment = () => {
+    setAttachments([{ id: Date.now(), name: 'Symptom_Photo.jpg', size: '2.4MB' }]);
   };
 
   const handleSendMessage = () => {

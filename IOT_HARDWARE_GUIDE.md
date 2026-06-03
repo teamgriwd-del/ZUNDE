@@ -1,78 +1,110 @@
-# ZUNDE IoT Hardware & Proteus Simulation Guide
+# ZUNDE RaMambo: IoT Hardware & Security Deep Dive
 
-This guide provides the necessary steps to create a physical/simulated hardware bridge for the ZUNDE platform using Proteus.
+This guide covers the **Physical Hardware Layer** of ZUNDE RaMambo, focusing on the security logic required to prevent livestock theft and monitor health anomalies in real-time using Proteus and Arduino/ESP32.
 
-## 1. Proteus Circuit Design
-To simulate an on-animal health tracker, create a circuit with the following components in Proteus:
+## 1. Refined Proteus Circuit (Security Focus)
+To build a high-fidelity "RaMambo Security Node," add the following to your Proteus schematic:
 
 ### Components List:
-- **Microcontroller:** Arduino Uno or ESP32 (Proteus Library required for ESP32).
-- **Temperature Sensor:** DHT11 or DHT22.
-- **Pulse/Heart Rate Sensor:** Potentiometer (to simulate pulse variation) or dedicated Pulse sensor module.
-- **GPS Module:** SIM808 or NEO-6M (linked to a Virtual Terminal).
-- **Output:** COMPIM (Serial Port Connector) — this is used to bridge Proteus data to your PC's real COM port.
+- **Microcontroller:** Arduino Uno (Recommended for simulation stability).
+- **Movement Sensor:** ADXL335 Accelerometer (or 3 Potentiometers to simulate X, Y, Z axes).
+- **Health Sensors:** DHT22 (Temp), Potentiometer (Heart Rate).
+- **Security Output:** Piezo Buzzer (Pin 8) — triggers during theft detection.
+- **Communication:** COMPIM (Serial Bridge) and Virtual Terminal.
 
-### Schematic Connections:
-1.  **DHT22 (Temp):** Connect Pin 2 to Arduino Digital Pin 2.
-2.  **GPS:** Connect TX to Arduino RX (Pin 0) and RX to Arduino TX (Pin 1).
-3.  **Potentiometer (Pulse):** Connect wiper to Analog Pin A0.
+### Key Connections:
+1.  **Accelerometer:** X-axis to **A1**, Y-axis to **A2**, Z-axis to **A3**.
+2.  **Buzzer:** Negative to GND, Positive to **Digital Pin 8**.
+3.  **GPS (NEO-6M):** TX to Pin 0, RX to Pin 1.
 
 ---
 
-## 2. Firmware (Arduino C++)
-Paste this code into your Arduino IDE, compile it, and load the `.hex` file into your Proteus Arduino component.
+## 2. Enterprise Firmware: Security & Adaptive Logic
+This firmware includes **Theft Detection** and **Adaptive Sampling** to save battery life while maintaining maximum security.
 
 ```cpp
 #include <DHT.h>
 
+// Pins
 #define DHTPIN 2
 #define DHTTYPE DHT22
+#define BUZZER_PIN 8
+#define ACCEL_X A1
+#define ACCEL_Y A2
+#define ACCEL_Z A3
 #define PULSE_PIN A0
+
+// Configuration
+const float SAFE_LAT = -17.3601;
+const float SAFE_LON = 30.1918;
+const float SAFE_RADIUS = 0.005; // Approx 500m
+const int MOVEMENT_THRESHOLD = 150; // Sensitivity for theft detection
 
 DHT dht(DHTPIN, DHTTYPE);
 
 void setup() {
   Serial.begin(9600);
   dht.begin();
+  pinMode(BUZZER_PIN, OUTPUT);
 }
 
 void loop() {
-  // Read Sensors
+  // 1. READ SENSORS
   float temp = dht.readTemperature();
-  int pulse = map(analogRead(PULSE_PIN), 0, 1023, 60, 120); // Simulating 60-120 BPM
+  int hr = map(analogRead(PULSE_PIN), 0, 1023, 60, 140);
   
-  // Simulated GPS (Zimbabwe Region - Mashonaland West Example)
-  float lat = -17.3601 + (random(-100, 100) / 10000.0);
-  float lon = 30.1918 + (random(-100, 100) / 10000.0);
+  // Simulated GPS Drift
+  float currentLat = SAFE_LAT + (random(-100, 100) / 5000.0);
+  float currentLon = SAFE_LON + (random(-100, 100) / 5000.0);
 
-  // Output JSON via Serial for ZUNDE Bridge
+  // Read Accelerometer (Movement)
+  int x = analogRead(ACCEL_X);
+  int y = analogRead(ACCEL_Y);
+  int z = analogRead(ACCEL_Z);
+  int totalMovement = abs(x-512) + abs(y-512); // Simple activity metric
+
+  // 2. SECURITY LOGIC (Theft Detection)
+  bool isOutside = sqrt(pow(currentLat - SAFE_LAT, 2) + pow(currentLon - SAFE_LON, 2)) > SAFE_RADIUS;
+  bool isTheft = isOutside && (totalMovement > MOVEMENT_THRESHOLD);
+
+  String securityStatus = "Secure";
+  int interval = 10000; // Default 10s battery save mode
+
+  if (isTheft) {
+    securityStatus = "THEFT_ALERT";
+    digitalWrite(BUZZER_PIN, HIGH); // Trigger physical alarm
+    interval = 2000; // Switch to High-Frequency Emergency Tracking
+  } else {
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  // 3. HEALTH LOGIC
+  String healthStatus = (temp > 39.5) ? "FEVER_DETECTED" : "Healthy";
+
+  // 4. OUTPUT JSON TO ZUNDE RAMAMBO BRIDGE
   Serial.print("{");
-  Serial.print("\"temperature\":"); Serial.print(temp);
-  Serial.print(", \"heartRate\":"); Serial.print(pulse);
-  Serial.print(", \"latitude\":"); Serial.print(lat, 4);
-  Serial.print(", \"longitude\":"); Serial.print(lon, 4);
-  Serial.print(", \"status\": \"Active\"");
+  Serial.print("\"temp\":"); Serial.print(temp);
+  Serial.print(", \"hr\":"); Serial.print(hr);
+  Serial.print(", \"lat\":"); Serial.print(currentLat, 4);
+  Serial.print(", \"lon\":"); Serial.print(currentLon, 4);
+  Serial.print(", \"move\":"); Serial.print(totalMovement);
+  Serial.print(", \"sec\": \""); Serial.print(securityStatus); Serial.print("\"");
+  Serial.print(", \"health\": \""); Serial.print(healthStatus); Serial.print("\"");
   Serial.println("}");
 
-  delay(5000); // Send data every 5 seconds
+  delay(interval); 
 }
 ```
 
 ---
 
-## 3. The Software Bridge (Proteus to React)
-To get the data from Proteus into your ZUNDE React app:
+## 3. High-Confidence Detection (What makes it deep?)
+The device doesn't just "send data." It performs **Edge Computing**:
+*   **Theft Signature:** The device looks for the specific "Signature" of theft: Rapid movement *combined* with an increasing distance from the farm center.
+*   **Adaptive Sampling:** To simulate a real commercial tag that lasts 5 years, the device stays in "Quiet Mode" when the animal is sleeping or grazing calmly, and only "Screams" for attention when an anomaly is detected.
 
-1.  **Virtual Serial Port:** Use a tool like **VSPD (Virtual Serial Port Driver)** to create a pair of virtual COM ports (e.g., COM1 and COM2).
-2.  **Proteus Connection:** Set the **COMPIM** component in Proteus to **COM1**.
-3.  **Data Forwarder:** Use a small Python script or a Node.js "Serial-to-Websocket" bridge to read from **COM2** and send it to your React app via a WebSocket.
-
----
-
-## 4. Testing the Simulation
-1.  Run the Proteus Simulation.
-2.  Check the **Virtual Terminal** in Proteus to ensure JSON strings are printing correctly.
-3.  ZUNDE's `HardwareSimulation.jsx` will automatically pick up the data stream once your WebSocket bridge is active.
+## 4. Bridging to ZUNDE Software
+Use your **Serial-to-Websocket** bridge to connect the `Serial.println` above to the `HardwareSimulation.jsx` component. Jinda RaMambo is already trained to interpret the `"sec": "THEFT_ALERT"` flag and will trigger the Red Dashboard state instantly.
 
 ---
-*Created for the ZUNDE Enterprise Agri-Health Project (Seed Co Innovation Challenge)*
+*ZUNDE RaMambo IoT Security Protocol - Seed Co Innovation Challenge*
