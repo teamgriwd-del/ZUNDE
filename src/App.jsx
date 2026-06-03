@@ -7,7 +7,7 @@ import HardwareSimulation from './components/HardwareSimulation/HardwareSimulati
 import JindaRaMambo from './components/IntelAI/ZundeIntelAI';
 import { 
   LayoutDashboard, Users, HeartPulse, Stethoscope, MessageSquare, Radio, 
-  Search, Bell, LogOut, ShieldCheck, ChevronRight 
+  Search, Bell, LogOut, ShieldCheck, ChevronRight, TrendingUp 
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import './App.css';
@@ -27,7 +27,13 @@ const INITIAL_ANIMALS = [
     damId: "D-202",
     birthWeight: 35,
     currentWeight: 420,
-    imageUrl: "https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&q=80&w=800"
+    imageUrl: "https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&q=80&w=800",
+    weightHistory: [
+        { month: 'Oct', weight: 35 }, { month: 'Dec', weight: 85 },
+        { month: 'Feb', weight: 150 }, { month: 'Apr', weight: 210 },
+        { month: 'Jun', weight: 280 }, { month: 'Aug', weight: 350 },
+        { month: 'Oct', weight: 420 }
+    ]
   },
   {
     id: 102,
@@ -42,7 +48,12 @@ const INITIAL_ANIMALS = [
     damId: "D-111",
     birthWeight: 32,
     currentWeight: 380,
-    imageUrl: "https://images.unsplash.com/photo-1596733430284-f7437764b1a9?auto=format&fit=crop&q=80&w=800"
+    imageUrl: "https://images.unsplash.com/photo-1596733430284-f7437764b1a9?auto=format&fit=crop&q=80&w=800",
+    weightHistory: [
+        { month: 'May', weight: 32 }, { month: 'Jul', weight: 90 },
+        { month: 'Sep', weight: 160 }, { month: 'Nov', weight: 240 },
+        { month: 'Jan', weight: 310 }, { month: 'Mar', weight: 380 }
+    ]
   },
   {
     id: 103,
@@ -57,7 +68,12 @@ const INITIAL_ANIMALS = [
     damId: "Dam-Y",
     birthWeight: 4,
     currentWeight: 45,
-    imageUrl: "https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&q=80&w=800"
+    imageUrl: "https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&q=80&w=800",
+    weightHistory: [
+        { month: 'Jan', weight: 4 }, { month: 'Mar', weight: 12 },
+        { month: 'May', weight: 22 }, { month: 'Jul', weight: 35 },
+        { month: 'Sep', weight: 45 }
+    ]
   },
   {
     id: 104,
@@ -72,7 +88,12 @@ const INITIAL_ANIMALS = [
     damId: "Queen",
     birthWeight: 5,
     currentWeight: 65,
-    imageUrl: "https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&q=80&w=800"
+    imageUrl: "https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&q=80&w=800",
+    weightHistory: [
+        { month: 'Nov', weight: 5 }, { month: 'Jan', weight: 18 },
+        { month: 'Mar', weight: 35 }, { month: 'May', weight: 52 },
+        { month: 'Jul', weight: 65 }
+    ]
   }
 ];
 
@@ -83,9 +104,22 @@ const INITIAL_LOGS = [
   { id: 4, animalId: 102, animal: "Thunder", action: "Routine Checkup", date: "3/02/2026, 11:45 AM" }
 ];
 
+const INITIAL_INVENTORY = [
+    { id: 1, name: "Oxytetracycline (LA)", stock: 500, unit: "ml", min: 100 },
+    { id: 2, name: "Buparvaquone", stock: 120, unit: "ml", min: 50 },
+    { id: 3, name: "Albendazole", stock: 1000, unit: "ml", min: 200 },
+    { id: 4, name: "FMD Vaccine", stock: 25, unit: "doses", min: 10 }
+];
+
 const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
   const criticalCount = auditLog.filter(log => log.action.includes('Critical') || log.action.includes('Diagnostic: Suspected')).length;
   const avgHealth = animals.length > 0 ? 88 : 0;
+
+  // Valuation calculation
+  const totalValue = animals.reduce((acc, a) => {
+      const base = a.species === 'Cattle' ? 500 : 100;
+      return acc + base + (a.currentWeight * 1.5);
+  }, 0);
 
   const data = [
     { name: 'Healthy', value: animals.filter(a => !auditLog.some(l => l.animalId === a.id && l.action.includes('Critical'))).length, color: '#1b5e20' },
@@ -97,7 +131,7 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
     <div className="flex-1 overflow-y-auto bg-gray-50 p-8">
       <header className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 text-left">Operational Overview</h2>
+          <h2 className="text-2xl font-black text-gray-800 text-left">Operational Overview</h2>
           <p className="text-sm text-gray-400 font-bold uppercase tracking-widest text-left">ZUNDE RaMambo • Live Intelligence</p>
         </div>
         <div className="flex items-center space-x-4">
@@ -119,16 +153,18 @@ const ZundeDashboard = ({ animals, auditLog, setActiveTab }) => {
           <div className="text-xs mt-2 flex items-center"><ShieldCheck size={12} className="mr-1"/> RaMambo Identity Active</div>
         </div>
         <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transform transition hover:scale-105">
-          <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Health Index</div>
-          <div className="text-4xl font-black text-zunde-green">{avgHealth}%</div>
-          <div className="w-full bg-gray-100 h-1.5 mt-3 rounded-full overflow-hidden">
-            <div className="bg-zunde-green h-full" style={{width: `${avgHealth}%`}}></div>
+          <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Herd Valuation</div>
+          <div className="text-4xl font-black text-zunde-green">${totalValue.toLocaleString()}</div>
+          <div className="text-xs text-green-500 mt-2 font-bold uppercase flex items-center">
+            <TrendingUp size={12} className="mr-1"/> 14% vs LAST QUARTER
           </div>
         </div>
         <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transform transition hover:scale-105">
-          <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Due Vaccines</div>
-          <div className="text-4xl font-black text-blue-600">03</div>
-          <div className="text-xs text-blue-400 mt-2 font-bold uppercase">Mashonaland Region</div>
+          <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Avg Health</div>
+          <div className="text-4xl font-black text-blue-600">{avgHealth}%</div>
+          <div className="w-full bg-gray-100 h-1.5 mt-3 rounded-full overflow-hidden">
+            <div className="bg-zunde-green h-full" style={{width: `${avgHealth}%`}}></div>
+          </div>
         </div>
         <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 transform transition hover:scale-105">
           <div className="text-sm font-semibold text-gray-400 uppercase mb-1">Alerts</div>
@@ -197,6 +233,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [completedTasks, setCompletedTasks] = useState([]);
   const [auditLog, setAuditLog] = useState(INITIAL_LOGS);
+  const [inventory, setInventory] = useState(INITIAL_INVENTORY);
 
   const addAnimal = (newAnimal) => {
     const images = {
@@ -206,7 +243,8 @@ function App() {
         'Pig': 'https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&q=80&w=800'
     };
     const imageUrl = images[newAnimal.species] || images['Cattle'];
-    setAnimals([{...newAnimal, imageUrl}, ...animals]);
+    const weightHistory = [{ month: 'Initial', weight: parseFloat(newAnimal.birthWeight) }];
+    setAnimals([{...newAnimal, imageUrl, weightHistory}, ...animals]);
     setActiveTab('profile');
   };
 
@@ -216,10 +254,11 @@ function App() {
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
+      {/* FIXED SIDEBAR */}
       <aside className="w-72 bg-zunde-green text-white flex flex-col shrink-0">
         <div className="p-8 flex items-center space-x-3">
           <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-zunde-green font-black text-2xl">R</div>
-          <span className="text-xl font-black tracking-tighter">ZUNDE RaMambo</span>
+          <span className="text-xl font-black tracking-tighter text-left">ZUNDE RaMambo</span>
         </div>
         
         <nav className="flex-1 px-6 space-y-2 mt-4">
@@ -299,6 +338,8 @@ function App() {
               setCompletedTasks={setCompletedTasks}
               auditLog={auditLog}
               setAuditLog={setAuditLog}
+              inventory={inventory}
+              setInventory={setInventory}
             />
           )}
           

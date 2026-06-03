@@ -32,10 +32,10 @@ const JindaRaMambo = ({ setActiveTab, animals }) => {
     navigation: {
       dashboard: ['home', 'dashboard', 'overview', 'main', 'start'],
       profiles: ['herd', 'animals', 'profiles', 'list', 'cow', 'goat', 'sheep', 'id', 'tag'],
-      health: ['vaccine', 'health', 'lifecycle', 'born', 'pregnant', 'gestation', 'weaning', 'calendar'],
-      diagnostics: ['sick', 'symptoms', 'illness', 'check', 'diagnose', 'disease', 'medicine'],
+      health: ['vaccine', 'health', 'lifecycle', 'born', 'pregnant', 'gestation', 'weaning', 'calendar', 'dosage', 'inventory', 'medicine', 'stock'],
+      diagnostics: ['sick', 'symptoms', 'illness', 'check', 'diagnose', 'disease', 'medicine', 'radar', 'outbreak'],
       vet: ['vet', 'doctor', 'advisor', 'expert', 'help', 'emergency', 'outbreak', 'agritex'],
-      iot: ['live', 'sensor', 'feed', 'temp', 'tracker', 'gps', 'movement', 'iot']
+      iot: ['live', 'sensor', 'feed', 'temp', 'tracker', 'gps', 'movement', 'iot', 'thief', 'security']
     },
     quickTips: [
       "Follow the 5-5-4 dipping schedule to prevent January Disease.",
@@ -70,51 +70,23 @@ const JindaRaMambo = ({ setActiveTab, animals }) => {
       };
     }
 
-    if (lowerText.includes('anthrax')) {
-      const anthrax = diseaseDatabase.find(d => d.name === "Anthrax");
-      return { 
-        text: `DANGER: ${anthrax.actionPlan[0]} ${anthrax.actionPlan[1]} Please report this to your regional Vet office immediately via the Advisory tab.`,
-        type: 'info'
-      };
+    // 4. Valuation & Economic Logic
+    if (lowerText.includes('worth') || lowerText.includes('value') || lowerText.includes('price') || lowerText.includes('money')) {
+        const totalValue = animals.reduce((acc, a) => {
+            const base = a.species === 'Cattle' ? 500 : 100;
+            return acc + base + (a.currentWeight * 1.5);
+        }, 0);
+        return { text: `Your royal herd is currently valued at approximately USD $${totalValue.toLocaleString()}. This is based on current weight and genetic potential.`, type: 'info' };
     }
 
-    // 4. Deep Knowledge: Lifecycle Protocols
-    if (lowerText.includes('gestation') || lowerText.includes('pregnant')) {
-        let species = 'Cattle';
-        if (lowerText.includes('goat')) species = 'Goat';
-        if (lowerText.includes('sheep')) species = 'Sheep';
-        if (lowerText.includes('pig')) species = 'Pig';
-        const days = HEALTH_PROTOCOLS[species].gestation;
-        return { text: `${species} have a gestation period of ${days} days. You can track individual due dates in the Lifecycle tab.`, type: 'info' };
-    }
-
-    if (lowerText.includes('wean')) {
-        return { text: `For Cattle, weaning should be done at ${HEALTH_PROTOCOLS.Cattle.weaningAge} days. I can calculate the exact date for each animal if you look at their Profile.`, type: 'info' };
-    }
-
-    // 5. IoT & Security Logic (Deep Hardware Training)
+    // 5. IoT & Security Logic
     if (lowerText.includes('thief') || lowerText.includes('stole') || lowerText.includes('where') || lowerText.includes('security') || lowerText.includes('mbavha')) {
         return { 
-          text: "I monitor animal movement 24/7 using the RaMambo Security Protocol. My sensors look for a 'Theft Signature': rapid running combined with leaving the safe zone. If this happens, I trigger a physical alarm (Buzzer) on the animal and alert you instantly in Red. Kana mbavha yaba mombe, ndinoridza mhere panyama yepamusoro nekukuzivisai nekukasira.", 
+          text: "I monitor animal movement 24/7 using the RaMambo Security Protocol. My sensors look for a 'Theft Signature': rapid running combined with leaving the safe zone. I will alert you instantly in Red if this happens.", 
           type: 'info' 
         };
     }
 
-    if (lowerText.includes('buzzer') || lowerText.includes('alarm') || lowerText.includes('mhere')) {
-        return {
-          text: "The physical RaMambo IoT device has a Piezo Buzzer. It sounds a loud alarm directly on the animal during a theft event to startle the intruder and notify nearby help.",
-          type: 'info'
-        };
-    }
-
-    if (lowerText.includes('battery') || lowerText.includes('power') || lowerText.includes('sampling') || lowerText.includes('long')) {
-        return {
-          text: "To save battery, the device uses 'Adaptive Sampling'. It stays in Quiet Mode (10s updates) when the animal is calm, and only switches to Emergency Mode (2s updates) when it detects a fever or suspicious movement. This helps the tag last for years.",
-          type: 'info'
-        };
-    }
-
-    // 6. Herd Analytics & Capabilities (Trained for non-technical/Shona)
     if (lowerText.includes('how many') || lowerText.includes('total') || lowerText.includes('size')) {
         return { text: `Your ZUNDE RaMambo enterprise currently manages ${animals.length} animals.`, type: 'info' };
     }
@@ -123,32 +95,24 @@ const JindaRaMambo = ({ setActiveTab, animals }) => {
         lowerText.includes('help') || 
         lowerText.includes('what can you do') || 
         lowerText.includes('what do you do') || 
-        lowerText.includes('wat do you do') || 
-        lowerText.includes('unoitei') || 
-        lowerText.includes('zvaunoita')
+        lowerText.includes('unoitei')
     ) {
         return { 
-          text: "I am your Royal Messenger, Jinda RaMambo. I can help you: \n1. Run Visual Diagnostics (Upload a photo of your animal)\n2. Navigate the system (e.g. 'Show me the sensors')\n3. Answer health questions about January Disease or Anthrax\n4. Check your herd size and vaccination calendar.\n\nNdinogona kukubatsira kuongorora mhuka dzako nemifananidzo, kana kukuzivisa nezvechirwere cheJanuary Disease.", 
+          text: "I am Jinda RaMambo. I can help you: \n1. Run Visual Diagnostics (Upload photos)\n2. Check Herd Valuation & Statistics\n3. Manage Medicine Stock Levels\n4. Monitor Security 24/7\n5. Navigate all ZUNDE modules.\n\nNdinogona kukubatsira kuchengetedza mhuka dzeRaMambo.", 
           type: 'help' 
         };
     }
 
-    // 7. Default for Non-Technical users
     const randomTip = knowledgeBase.quickTips[Math.floor(Math.random() * knowledgeBase.quickTips.length)];
-    return { 
-        text: `I'm not exactly sure how to answer that yet, but here is a tip: ${randomTip}`, 
-        type: 'help' 
-    };
+    return { text: `I'm not exactly sure, but remember: ${randomTip}`, type: 'help' };
   };
 
   const handleSend = (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-
     const userMsg = { id: Date.now(), sender: 'user', text: input, type: 'text' };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-
     setTimeout(() => {
       const response = processNLP(input);
       const aiMsg = { id: Date.now() + 1, sender: 'ai', ...response };
@@ -158,55 +122,33 @@ const JindaRaMambo = ({ setActiveTab, animals }) => {
 
   return (
     <>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`zunde-ai-toggle shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'}`}
-        style={{ background: '#1b5e20', border: '4px solid #fbc02d' }}
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className={`zunde-ai-toggle shadow-2xl transition-all duration-300 ${isOpen ? 'scale-0' : 'scale-100'}`} style={{ background: '#1b5e20', border: '4px solid #fbc02d' }}>
         <MessageCircle size={28} />
         <span className="ping-online"></span>
       </button>
 
       <div className={`zunde-ai-panel shadow-2xl transition-all duration-500 ${isOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-90 pointer-events-none'}`}>
         <div className="ai-header" style={{ background: 'linear-gradient(to bottom, #1b5e20, #2e7d32)' }}>
-          <div className="flex items-center space-x-3">
-            <div className="ai-avatar bg-yellow-400 text-zunde-green p-2 rounded-xl shadow-lg">
-              <ShieldCheck size={24} />
-            </div>
-            <div className="text-left">
+          <div className="flex items-center space-x-3 text-left">
+            <div className="ai-avatar bg-yellow-400 text-zunde-green p-2 rounded-xl shadow-lg"><ShieldCheck size={24} /></div>
+            <div>
               <h3 className="font-black text-white leading-none text-lg">Jinda RaMambo</h3>
               <span className="text-[9px] text-yellow-400 font-black uppercase tracking-[2px]">Royal Herd Messenger</span>
             </div>
           </div>
-          <button onClick={() => setIsOpen(false)} className="text-white/60 hover:text-white transition">
-            <X size={20} />
-          </button>
+          <button onClick={() => setIsOpen(false)} className="text-white/60 hover:text-white transition"><X size={20} /></button>
         </div>
-
         <div className="ai-messages scrollbar-hide">
           {messages.map(m => (
             <div key={m.id} className={`ai-msg-wrapper ${m.sender}`}>
-              <div className={`ai-bubble ${m.type}`}>
-                {m.type === 'nav' && <Navigation size={12} className="mb-1 text-yellow-600" />}
-                {m.type === 'info' && <ShieldCheck size={12} className="mb-1 text-blue-600" />}
-                <p>{m.text}</p>
-              </div>
+              <div className={`ai-bubble ${m.type}`}><p>{m.text}</p></div>
             </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
-
         <form onSubmit={handleSend} className="ai-input-area">
-          <input 
-            type="text" 
-            placeholder="Ask Jinda anything (e.g. 'Show sensors')"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="focus:outline-none font-bold text-sm"
-          />
-          <button type="submit" className="bg-zunde-green text-white p-2.5 rounded-xl hover:bg-green-700 transition shadow-lg">
-            <Send size={18} />
-          </button>
+          <input type="text" placeholder="Ask Jinda anything..." value={input} onChange={(e) => setInput(e.target.value)} className="focus:outline-none font-bold text-sm" />
+          <button type="submit" className="bg-zunde-green text-white p-2.5 rounded-xl hover:bg-green-700 transition shadow-lg"><Send size={18} /></button>
         </form>
       </div>
     </>
