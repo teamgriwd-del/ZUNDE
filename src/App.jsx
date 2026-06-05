@@ -60,6 +60,52 @@ const greet = () => {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 };
 
+// ── Stakeholder Map — shown on all dashboards ──────────────────────────────
+const StakeholderMap = () => (
+  <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+    <div className="flex items-center gap-2 mb-1">
+      <Globe size={15} className="text-zunde-green" />
+      <h3 className="text-sm font-black text-gray-800">How ZUNDE Connects Everyone</h3>
+    </div>
+    <p className="text-[11px] text-gray-400 font-medium mb-5">
+      ZUNDE is a four-stakeholder ecosystem. Every role plays a specific part — here's how they all connect.
+    </p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      {[
+        { emoji: '🌾', role: 'Farmer',      color: 'bg-green-50 border-green-200',   text: 'text-green-800',  desc: 'Registers animals, tracks health, orders medicines, and lists livestock for sale.' },
+        { emoji: '💊', role: 'Supplier',     color: 'bg-orange-50 border-orange-200', text: 'text-orange-800', desc: 'Distributes vaccines, medicines, and feed to farmers. Receives orders through ZUNDE.' },
+        { emoji: '🏪', role: 'Retailer',     color: 'bg-purple-50 border-purple-200', text: 'text-purple-800', desc: 'Browses certified livestock listed by farmers, places bids, and receives DVS trade certificates.' },
+        { emoji: '🩺', role: 'Veterinarian', color: 'bg-blue-50 border-blue-200',     text: 'text-blue-800',   desc: 'Certifies animal health, issues movement permits, and manages regional disease outbreaks.' },
+      ].map(r => (
+        <div key={r.role} className={`${r.color} border rounded-xl p-3`}>
+          <p className="text-xl mb-1">{r.emoji}</p>
+          <p className={`text-xs font-black ${r.text} uppercase mb-1`}>{r.role}</p>
+          <p className="text-[10px] text-gray-500 font-medium leading-snug">{r.desc}</p>
+        </div>
+      ))}
+    </div>
+    {/* Flow arrows */}
+    <div className="bg-gray-50 rounded-xl p-3 space-y-1.5">
+      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">How it flows</p>
+      {[
+        { from: '🌾 Farmer', arrow: '→', to: '💊 Supplier', desc: 'orders medicines & vaccines' },
+        { from: '🌾 Farmer', arrow: '→', to: '🩺 Vet',      desc: 'requests health checks & movement certificates' },
+        { from: '🌾 Farmer', arrow: '→', to: '🏪 Retailer', desc: 'lists animals for sale on the marketplace' },
+        { from: '🏪 Retailer', arrow: '→', to: '🌾 Farmer', desc: 'places a bid / makes an offer to buy' },
+        { from: '🩺 Vet', arrow: '→', to: '🏪 Retailer',  desc: 'issues official DVS movement certificate for the sale' },
+      ].map((f, i) => (
+        <div key={i} className="flex items-center gap-2 text-[10px] font-medium text-gray-600">
+          <span className="font-black text-gray-800 shrink-0">{f.from}</span>
+          <span className="text-gray-400">{f.arrow}</span>
+          <span className="font-black text-gray-800 shrink-0">{f.to}</span>
+          <span className="text-gray-400 shrink-0">—</span>
+          <span>{f.desc}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const KpiCard = ({ label, value, sub, accent = 'bg-white border-gray-100', textColor = 'text-gray-900', icon: Icon, iconColor = 'text-gray-400', onClick }) => (
   <div
     onClick={onClick}
@@ -95,7 +141,7 @@ const SectionLabel = ({ children }) => (
 );
 
 // ── FARMER DASHBOARD ───────────────────────────────────────────────────────
-const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiveTab }) => {
+const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiveTab, onListAnimal }) => {
   const totalValue  = animals.reduce((acc, a) => acc + 500 + a.currentWeight * 1.5, 0);
   const forSale     = animals.filter(a => a.forSale).length;
   const lowStock    = inventory.filter(i => i.stock <= i.min);
@@ -211,55 +257,89 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           </div>
         </div>
 
-        {/* Middle: Animal health overview */}
+        {/* Middle: Sell Your Animals */}
         <div className="col-span-1 space-y-5">
+          {/* Sell animals panel */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-black text-gray-800">Your Animals</h3>
-              <button onClick={() => setActiveTab('profile')} className="text-[10px] font-black text-zunde-green hover:underline uppercase">View all →</button>
+            <div className="flex items-center gap-2 mb-1">
+              <ShoppingCart size={15} className="text-purple-600" />
+              <h3 className="text-sm font-black text-gray-800">Sell Your Animals</h3>
             </div>
+            <p className="text-[11px] text-gray-400 font-medium mb-4 leading-snug">
+              Toggle any animal below to list it on the ZUNDE Marketplace. Retailers and livestock buyers will immediately see it and can place a bid. You control the listing — remove it any time.
+            </p>
+
             {animals.length === 0 ? (
-              <div className="text-center py-8">
-                <span className="text-5xl">🐄</span>
-                <p className="text-xs text-gray-400 font-medium mt-3">No animals registered yet</p>
-                <button onClick={() => setActiveTab('profile')} className="mt-3 px-4 py-2 bg-zunde-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Add Animal</button>
+              <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-xl">
+                <span className="text-4xl">🐄</span>
+                <p className="text-xs text-gray-400 font-medium mt-2">No animals registered yet</p>
+                <button onClick={() => setActiveTab('profile')} className="mt-3 px-4 py-2 bg-zunde-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Register an Animal</button>
               </div>
             ) : (
               <div className="space-y-3">
                 {animals.map(a => (
-                  <button key={a.id} onClick={() => setActiveTab('profile')} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-zunde-green/30 hover:bg-green-50/30 transition text-left">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 overflow-hidden shrink-0">
+                  <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${a.forSale ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="w-10 h-10 rounded-xl bg-gray-200 overflow-hidden shrink-0">
                       <img src={a.imageUrl} className="w-full h-full object-cover" alt={a.name} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-black text-gray-800">{a.name}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{a.species} · {a.breed} · {a.currentWeight}kg</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{a.species} · {a.currentWeight}kg</p>
+                      {a.forSale && (
+                        <p className="text-[9px] font-black text-yellow-700 mt-0.5">✓ Visible to retailers now</p>
+                      )}
                     </div>
-                    {a.forSale && <span className="text-[9px] font-black bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full uppercase shrink-0">For Sale</span>}
-                  </button>
+                    <button
+                      onClick={() => onListAnimal(a.id)}
+                      className={`shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${
+                        a.forSale
+                          ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
+                          : 'bg-zunde-green text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {a.forSale ? 'Unlist' : 'List for Sale'}
+                    </button>
+                  </div>
                 ))}
+              </div>
+            )}
+
+            {/* What happens next */}
+            {animals.some(a => a.forSale) && (
+              <div className="mt-4 bg-purple-50 border border-purple-200 rounded-xl p-3">
+                <p className="text-[10px] font-black text-purple-700 uppercase mb-1">What happens next</p>
+                <div className="space-y-1">
+                  {['Retailers browse your listing on the Marketplace', 'A retailer places a bid — you receive it via Vet Messenger', 'Vet issues a DVS movement certificate for the sale'].map((s, i) => (
+                    <div key={i} className="flex items-start gap-2 text-[10px] text-purple-600 font-medium">
+                      <span className="w-4 h-4 bg-purple-200 text-purple-700 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 mt-0.5">{i + 1}</span>
+                      {s}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
 
           {/* Medicine cabinet */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-1">
               <h3 className="text-sm font-black text-gray-800">Medicine Cabinet</h3>
               <button onClick={() => setActiveTab('health')} className="text-[10px] font-black text-zunde-green hover:underline uppercase">Manage →</button>
             </div>
+            <p className="text-[11px] text-gray-400 font-medium mb-4">Your current medicine stock. Medicines are supplied by registered ZUNDE Suppliers — contact them via Vet Messenger.</p>
             <div className="space-y-3">
-              {INITIAL_INVENTORY.map(item => {
+              {inventory.map(item => {
                 const isLow = item.stock <= item.min;
                 const pct   = Math.min(100, (item.stock / 1000) * 100);
                 return (
                   <div key={item.id} className={`p-3 rounded-xl ${isLow ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
                     <div className="flex justify-between items-center mb-1.5">
                       <p className="text-[11px] font-black text-gray-700 truncate">{item.name}</p>
-                      {isLow && <span className="text-[9px] font-black text-red-600 animate-pulse">Low</span>}
+                      {isLow && <span className="text-[9px] font-black text-red-600 animate-pulse">Low — reorder</span>}
                     </div>
                     <div className="flex justify-between items-center text-[10px] text-gray-400 font-medium mb-1">
-                      <span>{item.stock} {item.unit}</span><span>Min: {item.min}</span>
+                      <span>{item.stock} {item.unit}</span>
+                      <span className="text-gray-300">from {item.supplier}</span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${isLow ? 'bg-red-500' : pct > 50 ? 'bg-zunde-green' : 'bg-orange-400'}`} style={{ width: `${pct}%` }} />
@@ -268,6 +348,9 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
                 );
               })}
             </div>
+            <button onClick={() => setActiveTab('vet')} className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-[10px] font-black text-orange-700 uppercase hover:bg-orange-100 transition">
+              <MessageSquare size={12} /> Order from a Supplier
+            </button>
           </div>
         </div>
 
@@ -340,6 +423,9 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           )}
         </div>
       </div>
+
+      {/* Stakeholder map — full width at bottom */}
+      <StakeholderMap />
     </div>
   );
 };
@@ -492,15 +578,31 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
   return (
     <div className="p-6 bg-gray-50 space-y-6 text-left overflow-y-auto h-full">
 
-      {/* Greeting */}
-      <div className="bg-orange-500 rounded-3xl p-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
-        <div className="relative z-10">
-          <p className="text-orange-200 text-xs font-black uppercase tracking-[3px] mb-1">{greet()}, Supplier</p>
-          <h2 className="text-2xl font-black text-white leading-tight">Supply Distribution Hub</h2>
-          <p className="text-orange-100/80 text-sm font-medium mt-1">
-            {pending} pending order{pending !== 1 ? 's' : ''} awaiting dispatch · {dispatched} in transit · {delivered} delivered today
+      {/* Role explanation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-orange-500 rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
+          <div className="relative z-10">
+            <p className="text-orange-200 text-xs font-black uppercase tracking-[3px] mb-1">{greet()}, Supplier</p>
+            <h2 className="text-xl font-black text-white leading-tight">Supply Distribution Hub</h2>
+            <p className="text-orange-100/80 text-sm font-medium mt-1">
+              {pending} pending · {dispatched} in transit · {delivered} delivered
+            </p>
+          </div>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+          <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">Your Role on ZUNDE</p>
+          <p className="text-sm font-black text-gray-800 mb-2">You are a veterinary medicine &amp; vaccine distributor</p>
+          <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3">
+            Farmers across Zimbabwe register on ZUNDE to manage their herd health. When they run low on vaccines or medicines, they contact you through the platform. You fulfill the order and dispatch to the farm.
           </p>
+          <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500">
+            <span className="text-lg">🌾</span><span>Farmer runs low on stock</span>
+            <ArrowRight size={12} className="text-orange-400 shrink-0" />
+            <span className="text-lg">💊</span><span>You fulfill &amp; dispatch</span>
+            <ArrowRight size={12} className="text-orange-400 shrink-0" />
+            <span className="text-lg">🐄</span><span>Animals stay healthy</span>
+          </div>
         </div>
       </div>
 
@@ -597,6 +699,8 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
           </button>
         </div>
       </div>
+
+      <StakeholderMap />
     </div>
   );
 };
@@ -616,20 +720,33 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
   return (
     <div className="p-6 bg-gray-50 space-y-6 text-left overflow-y-auto h-full">
 
-      {/* Greeting */}
-      <div className="bg-purple-700 rounded-3xl p-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1">
+      {/* Role explanation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-purple-700 rounded-3xl p-6 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
+          <div className="relative z-10">
             <p className="text-purple-300 text-xs font-black uppercase tracking-[3px] mb-1">{greet()}, Retailer</p>
-            <h2 className="text-2xl font-black text-white leading-tight">Livestock Marketplace</h2>
+            <h2 className="text-xl font-black text-white leading-tight">Livestock Marketplace</h2>
             <p className="text-purple-200/80 text-sm font-medium mt-1">
-              {listings.length} active listing{listings.length !== 1 ? 's' : ''} · Market sentiment: Bullish · Average price trend: +10% this quarter
+              {listings.length} active listing{listings.length !== 1 ? 's' : ''} · Market sentiment: Bullish
             </p>
           </div>
-          <button className="flex items-center gap-2 bg-yellow-400 text-gray-900 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-yellow-300 transition shrink-0 shadow-lg">
-            <Star size={14} /> Open Bidding Console
-          </button>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+          <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-2">Your Role on ZUNDE</p>
+          <p className="text-sm font-black text-gray-800 mb-2">You are a livestock buyer &amp; trader</p>
+          <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3">
+            Farmers list their animals for sale on ZUNDE. You browse verified listings — each animal comes with a certified Health Passport. You place a bid, the farmer accepts, and a DVS Vet issues an official movement certificate so you can legally transport the animal.
+          </p>
+          <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500 flex-wrap">
+            <span className="text-lg">🌾</span><span>Farmer lists</span>
+            <ArrowRight size={12} className="text-purple-400 shrink-0" />
+            <span className="text-lg">🏪</span><span>You bid</span>
+            <ArrowRight size={12} className="text-purple-400 shrink-0" />
+            <span className="text-lg">🩺</span><span>Vet certifies</span>
+            <ArrowRight size={12} className="text-purple-400 shrink-0" />
+            <span className="text-lg">✅</span><span>Sale complete</span>
+          </div>
         </div>
       </div>
 
@@ -772,6 +889,8 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
           </button>
         </div>
       </div>
+
+      <StakeholderMap />
     </div>
   );
 };
@@ -1017,7 +1136,7 @@ function App() {
         <div className={`flex-1 ${activeTab === 'vet' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {activeTab === 'dashboard' && (
             <ErrorBoundary>
-              {role === 'Farmer'       && <FarmerDashboard      animals={animals} auditLog={auditLog} inventory={inventory} notifications={notifications} setActiveTab={setActiveTab} />}
+              {role === 'Farmer'       && <FarmerDashboard      animals={animals} auditLog={auditLog} inventory={inventory} notifications={notifications} setActiveTab={setActiveTab} onListAnimal={handleListAnimal} />}
               {role === 'Veterinarian' && <VeterinarianDashboard animals={animals} notifications={notifications} setActiveTab={setActiveTab} currentUser={currentUser} />}
               {role === 'Supplier'     && <SupplierDashboard     inventory={inventory} setActiveTab={setActiveTab} currentUser={currentUser} />}
               {role === 'Retailer'     && <RetailerDashboard     animals={animals} setActiveTab={setActiveTab} currentUser={currentUser} />}
