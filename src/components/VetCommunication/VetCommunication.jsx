@@ -1,276 +1,495 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ZIMBABWE_REGIONS, LOCAL_ADVISORY, EMERGENCY_HOTLINES } from './vetData';
-import { Send, Plus, Search, MapPin, Phone, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
+import {
+  Send, Plus, MapPin, Phone, AlertCircle, CheckCircle,
+  ShieldCheck, Video, Mic, FileText, BellRing, UserCheck, Zap, Radar,
+  Clock, X
+} from 'lucide-react';
 import './VetCommunication.css';
 
+const VET_AUTO_RESPONSES = {
+  Emergency: [
+    "HIGH PRIORITY: Your case has been flagged. A duty officer is being notified. Please isolate the animal immediately.",
+    "Case registered. Expected response within 15 minutes. Do not move the animal or remove any discharge material.",
+    "Emergency Protocol Initiated. Dr. T. Moyo has been dispatched. Maintain biosecurity until arrival."
+  ],
+  Vaccination: [
+    "Vaccination request received. Please confirm the animal's current weight and last vaccination date.",
+    "Your vaccination schedule has been reviewed. A certificate will be issued within 24 hours.",
+    "Vaccination certified. Please collect your movement permit from the District Vet Office."
+  ],
+  "Trade Certification": [
+    "Trade certification request received. A health inspection must be conducted before certificate issuance.",
+    "Please ensure all animals for export/trade have been dipped within the last 14 days.",
+    "Your export health certificate is being processed. Estimated: 2-3 working days."
+  ]
+};
+
 const INITIAL_TICKETS = [
-  { 
-    id: 1, 
-    status: 'Resolved', 
-    category: 'Consultation', 
-    animal: 'Bessie', 
+  {
+    id: 1,
+    status: 'Certified',
+    category: 'Vaccination',
+    animal: 'Bessie',
     province: 'Mashonaland West',
     priority: 'Routine',
-    subject: 'Vaccination Schedule',
+    subject: 'Vaccination Approval — Brucellosis Booster',
     messages: [
-        { sender: 'Farmer', text: 'When is Bessie due for her next Brucellosis shot?' },
-        { sender: 'Vet', text: 'Based on her age of 2y 4m, she should have had her booster last month. I recommend a checkup next week.' }
-    ]
+      { sender: 'Farmer', text: 'When is Bessie due for her next Brucellosis shot?', time: '09:14' },
+      { sender: 'Vet', text: 'Based on her age of 2y 4m, she should have had her booster last month. I have issued a digital certificate for treatment. Please administer S19 under licensed supervision only.', time: '09:31' }
+    ],
+    certificateIssued: true,
+    createdAt: new Date(Date.now() - 86400000 * 2).toLocaleDateString()
   },
-  { 
-    id: 2, 
-    status: 'In Progress', 
-    category: 'Emergency', 
-    animal: 'Thunder', 
+  {
+    id: 2,
+    status: 'EMERGENCY',
+    category: 'Emergency',
+    animal: 'Thunder',
     province: 'Mashonaland West',
     priority: 'Critical',
-    subject: 'Suspected Foot & Mouth',
+    subject: 'Suspected Foot & Mouth — Immediate Response',
     messages: [
-        { sender: 'Farmer', text: 'Thunder is showing blisters on his snout and is limping.' },
-        { sender: 'Vet', text: 'I am dispatching a regional officer to your district now. Please isolate the animal immediately.' }
-    ]
+      { sender: 'Farmer', text: 'Thunder is showing blisters on his snout and is limping badly. He refused feed this morning.', time: '06:42' },
+      { sender: 'Vet', text: 'HIGH PRIORITY: Emergency officer dispatched. Isolate Thunder in a separate pen immediately. Do not allow any movement of animals, people, or vehicles off the property. Switch to Video Consult now for visual confirmation.', time: '06:55' }
+    ],
+    isVideoAvailable: true,
+    createdAt: new Date().toLocaleDateString()
   }
 ];
+
+const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+const sanitize = (str) => str.replace(/[<>]/g, '').trim().slice(0, 500);
 
 const VetCommunication = ({ animals = [] }) => {
   const [tickets, setTickets] = useState(INITIAL_TICKETS);
   const [isCreating, setIsCreating] = useState(false);
   const [activeTicket, setActiveTicket] = useState(null);
   const [newTicket, setNewTicket] = useState({
-    category: 'Emergency',
-    animalId: '',
-    province: '',
-    district: '',
-    subject: '',
-    description: ''
+    category: 'Emergency', animalId: '', province: '', district: '', subject: '', description: ''
   });
-
   const [chatInput, setChatInput] = useState('');
+  const [isVetTyping, setIsVetTyping] = useState(false);
+  const [showHotlines, setShowHotlines] = useState(false);
+  const [formError, setFormError] = useState('');
+  const chatEndRef = useRef(null);
+  const timeoutRefs = useRef([]);
 
-  const [attachments, setAttachments] = useState([]);
+  useEffect(() => {
+    return () => timeoutRefs.current.forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeTicket?.messages]);
 
   const handleCreateTicket = (e) => {
     e.preventDefault();
-    const animalName = animals.find(a => a.id == newTicket.animalId)?.name || 'General Inquiry';
-    const priority = newTicket.category === 'Emergency' ? 'Critical' : 'Routine';
-    
+    if (!newTicket.subject.trim()) { setFormError('Please provide a report subject.'); return; }
+    setFormError('');
+    const animalName = animals.find(a => a.id === parseInt(newTicket.animalId, 10))?.name || 'General Inquiry';
     const ticket = {
       ...newTicket,
       id: Date.now(),
-      status: 'Pending',
+      status: newTicket.category === 'Emergency' ? 'EMERGENCY' : 'Pending',
       animal: animalName,
-      priority: priority,
-      messages: [{ sender: 'Farmer', text: newTicket.description, attachments: [...attachments] }]
+      priority: newTicket.category === 'Emergency' ? 'Critical' : 'Routine',
+      createdAt: new Date().toLocaleDateString(),
+      messages: newTicket.description.trim()
+        ? [{ sender: 'Farmer', text: sanitize(newTicket.description), time: now() }]
+        : [],
+      isVideoAvailable: newTicket.category === 'Emergency'
     };
 
-    setTickets([ticket, ...tickets]);
+    setTickets(prev => [ticket, ...prev]);
     setIsCreating(false);
     setNewTicket({ category: 'Emergency', animalId: '', province: '', district: '', subject: '', description: '' });
-    setAttachments([]);
-  };
 
-  const simulateAttachment = () => {
-    setAttachments([{ id: Date.now(), name: 'Symptom_Photo.jpg', size: '2.4MB' }]);
+    const t1 = setTimeout(() => {
+      const responses = VET_AUTO_RESPONSES[ticket.category] || VET_AUTO_RESPONSES['Emergency'];
+      const autoMsg = { sender: 'Vet', text: responses[0], time: now() };
+      setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, messages: [...t.messages, autoMsg] } : t));
+      setActiveTicket(prev => prev?.id === ticket.id ? { ...prev, messages: [...(prev.messages || []), autoMsg] } : prev);
+    }, 3000);
+    timeoutRefs.current.push(t1);
   };
 
   const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
-    const updatedTickets = tickets.map(t => {
-      if (t.id === activeTicket.id) {
-        return { ...t, messages: [...t.messages, { sender: 'Farmer', text: chatInput }] };
-      }
-      return t;
-    });
-    setTickets(updatedTickets);
-    setActiveTicket({ ...activeTicket, messages: [...activeTicket.messages, { sender: 'Farmer', text: chatInput }] });
+    const text = sanitize(chatInput);
+    if (!text || !activeTicket) return;
+    const newMsg = { sender: 'Farmer', text, time: now() };
+    const updated = tickets.map(t =>
+      t.id === activeTicket.id ? { ...t, messages: [...t.messages, newMsg] } : t
+    );
+    setTickets(updated);
+    const updatedTicket = { ...activeTicket, messages: [...activeTicket.messages, newMsg] };
+    setActiveTicket(updatedTicket);
     setChatInput('');
+
+    setIsVetTyping(true);
+    const delay = 1800 + Math.random() * 1500;
+    const ticketId = activeTicket.id;
+    const category = activeTicket.category;
+    const t2 = setTimeout(() => {
+      setIsVetTyping(false);
+      const responses = VET_AUTO_RESPONSES[category] || VET_AUTO_RESPONSES['Emergency'];
+      const reply = responses[Math.floor(Math.random() * responses.length)];
+      const vetMsg = { sender: 'Vet', text: reply, time: now() };
+      setTickets(prev => prev.map(t =>
+        t.id === ticketId ? { ...t, messages: [...t.messages, vetMsg] } : t
+      ));
+      setActiveTicket(prev => prev?.id === ticketId ? { ...prev, messages: [...(prev.messages || []), vetMsg] } : prev);
+    }, delay);
+    timeoutRefs.current.push(t2);
+  };
+
+  const getStatusStyle = (t) => {
+    if (t.status === 'EMERGENCY') return 'bg-red-500 text-white animate-pulse';
+    if (t.status === 'Certified') return 'bg-yellow-400 text-gray-900';
+    return 'bg-blue-500/20 text-blue-400';
   };
 
   return (
-    <div className="zunde-vet-comm enterprise zim-focused flex h-full">
-      {/* Sidebar: Ticket History */}
-      <div className="comm-sidebar w-80 bg-gray-50 border-r border-gray-100 flex flex-col">
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest">Consultations</h3>
-            <button className="bg-zunde-green text-white p-1.5 rounded-lg hover:bg-green-700 transition" onClick={() => {setIsCreating(true); setActiveTicket(null);}}>
-              <Plus size={18} />
+    <div className="zunde-vet-comm enterprise zim-focused flex h-full overflow-hidden">
+
+      {/* SIDEBAR */}
+      <div className="comm-sidebar w-96 bg-gray-900 flex flex-col border-r border-white/5">
+        <div className="p-8 border-b border-white/5">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-sm font-black text-zunde-green uppercase tracking-[4px]">Tele-Health Console</h3>
+            <button
+              className="bg-zunde-green text-white p-2 rounded-xl hover:bg-green-700 shadow-lg transition"
+              onClick={() => { setIsCreating(true); setActiveTicket(null); setFormError(''); }}
+              aria-label="Create new case"
+            >
+              <Plus size={20} />
             </button>
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-gray-300" size={14} />
-            <input type="text" placeholder="Search cases..." className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-xl text-xs font-bold border-transparent focus:bg-white focus:border-zunde-green outline-none" />
+
+          {/* Provincial Alert */}
+          <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-3">
+            <div className="flex items-center space-x-2 text-red-400 mb-1">
+              <BellRing size={14} className="animate-bounce" aria-hidden="true" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Provincial Alert · Mashonaland West</span>
+            </div>
+            <p className="text-[11px] text-white font-bold leading-tight">Foot & Mouth outbreak confirmed in Chegutu. Restrict all livestock movement. Report any symptoms immediately.</p>
+          </div>
+
+          <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-2xl">
+            <div className="flex items-center space-x-2 text-orange-400 mb-1">
+              <AlertCircle size={14} aria-hidden="true" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Advisory · January Disease Season</span>
+            </div>
+            <p className="text-[11px] text-gray-300 font-bold leading-tight">Peak Theileriosis risk period. Maintain 5-5-4 dipping schedule. Contact DVS for Buparvaquone allocation.</p>
           </div>
         </div>
-        
-        <div className="ticket-list flex-1 overflow-y-auto p-4 space-y-3">
+
+        <div className="ticket-list flex-1 overflow-y-auto p-6 space-y-3">
           {tickets.map(t => (
-            <div 
-              key={t.id} 
-              className={`p-4 rounded-2xl cursor-pointer transition border-2 ${activeTicket?.id === t.id ? 'bg-white border-zunde-green shadow-lg' : 'bg-white border-transparent hover:border-gray-200'}`}
-              onClick={() => {setActiveTicket(t); setIsCreating(false);}}
+            <div
+              key={t.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Case: ${t.subject}`}
+              className={`p-5 rounded-3xl cursor-pointer transition border-2 ${activeTicket?.id === t.id ? 'bg-white/10 border-zunde-green shadow-xl' : 'bg-white/5 border-transparent hover:border-white/10'}`}
+              onClick={() => { setActiveTicket(t); setIsCreating(false); }}
+              onKeyDown={e => e.key === 'Enter' && (setActiveTicket(t), setIsCreating(false))}
             >
               <div className="flex justify-between items-start mb-2">
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${t.priority === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                  {t.priority}
+                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${getStatusStyle(t)}`}>
+                  {t.status === 'EMERGENCY' ? '🚨 EMERGENCY' : t.status}
                 </span>
-                <span className="text-[10px] text-gray-300 font-bold">#{t.id.toString().slice(-4)}</span>
+                <span className="text-[9px] text-gray-600 font-bold">CASE-{String(t.id).slice(-4)}</span>
               </div>
-              <h4 className="text-sm font-black text-gray-800 text-left truncate">{t.subject}</h4>
-              <div className="flex items-center text-[10px] text-gray-400 font-bold mt-1 uppercase">
-                <MapPin size={10} className="mr-1" /> {t.province}
-              </div>
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-50">
-                <span className="text-[10px] font-black text-gray-400">{t.animal}</span>
-                <span className={`text-[9px] font-black uppercase ${t.status === 'Resolved' ? 'text-green-500' : 'text-orange-500'}`}>{t.status}</span>
+              <h4 className="text-sm font-black text-white text-left leading-tight mt-2">{t.subject}</h4>
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-white/5">
+                <span className="text-[10px] font-black text-gray-500 uppercase">{t.animal}</span>
+                <div className="flex items-center space-x-2">
+                  {t.certificateIssued && <ShieldCheck size={12} className="text-yellow-400" aria-label="Certificate issued" />}
+                  <span className="text-[9px] text-gray-600">{t.createdAt}</span>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="p-6 bg-red-50 border-t border-red-100">
-           <h4 className="text-[10px] font-black text-red-700 uppercase tracking-widest mb-3 flex items-center">
-             <AlertCircle size={12} className="mr-2" /> Regional DVS Hotlines
-           </h4>
-           <div className="space-y-2">
-             {EMERGENCY_HOTLINES.map(h => (
-               <div key={h.office} className="flex justify-between items-center text-[10px] font-bold">
-                 <span className="text-red-800 opacity-60">{h.office}</span>
-                 <a href={`tel:${h.phone}`} className="text-red-700 hover:underline">{h.phone}</a>
-               </div>
-             ))}
-           </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
-        {isCreating ? (
-          <div className="p-12 overflow-y-auto text-left max-w-3xl mx-auto w-full">
-            <div className="flex items-center space-x-4 mb-10">
-                <div className="w-12 h-12 bg-green-50 text-zunde-green rounded-2xl flex items-center justify-center">
-                    <Plus size={24} />
-                </div>
-                <div>
-                    <h3 className="text-2xl font-black text-gray-800 leading-none">New Consultation</h3>
-                    <p className="text-sm text-gray-400 font-bold uppercase tracking-widest mt-1">Digital Veterinary Request</p>
-                </div>
+        {/* On-Duty & Hotlines */}
+        <div className="p-6 bg-black/20 border-t border-white/5">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-9 h-9 rounded-full bg-zunde-green flex items-center justify-center text-white">
+              <UserCheck size={16} aria-hidden="true" />
             </div>
-
-            <form onSubmit={handleCreateTicket} className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Case Category</label>
-                  <select className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={newTicket.category} onChange={e => setNewTicket({...newTicket, category: e.target.value})}>
-                    <option>Emergency</option><option>Vaccination</option><option>Nutrition</option><option>General Advisory</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Animal</label>
-                  <select className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={newTicket.animalId} onChange={e => setNewTicket({...newTicket, animalId: e.target.value})}>
-                    <option value="">Select Animal</option>
-                    {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                  </select>
-                </div>
+            <div className="text-left">
+              <div className="text-[11px] text-white font-black leading-none uppercase">Dr. T. Moyo</div>
+              <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest flex items-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block mr-1" />On-Duty Officer
               </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Province</label>
-                  <select required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={newTicket.province} onChange={e => setNewTicket({...newTicket, province: e.target.value, district: ''})}>
-                    <option value="">Select Province</option>
-                    {ZIMBABWE_REGIONS.provinces.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">District</label>
-                  <select required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={newTicket.district} onChange={e => setNewTicket({...newTicket, district: e.target.value})}>
-                    <option value="">Select District</option>
-                    {(ZIMBABWE_REGIONS.districts[newTicket.province] || []).map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Subject</label>
-                <input type="text" placeholder="e.g. Unusual Lethargy" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={newTicket.subject} onChange={e => setNewTicket({...newTicket, subject: e.target.value})} />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detail Symptoms / Inquiry</label>
-                <textarea required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold h-32" value={newTicket.description} onChange={e => setNewTicket({...newTicket, description: e.target.value})} placeholder="Describe the situation..."></textarea>
-              </div>
-
-              <div className="flex space-x-4 pt-6">
-                <button type="button" className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase text-xs" onClick={() => setIsCreating(false)}>Discard</button>
-                <button type="submit" className="flex-[2] py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-green-900/20">Submit to Veterinary Portal</button>
-              </div>
-            </form>
+            </div>
           </div>
-        ) : activeTicket ? (
-          <div className="flex flex-col h-full bg-gray-50/50">
-            <div className="p-8 bg-white border-b border-gray-100 flex justify-between items-center">
-              <div className="text-left">
-                <div className="flex items-center space-x-3 mb-1">
-                    <h4 className="text-xl font-black text-gray-800 leading-none">{activeTicket.subject}</h4>
-                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${activeTicket.priority === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>{activeTicket.priority}</span>
-                </div>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[2px]">{activeTicket.animal} • {activeTicket.province}, {activeTicket.district || 'Main'}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                 <button className="text-xs font-black text-gray-400 hover:text-gray-600 px-4 py-2 uppercase tracking-widest">Close Case</button>
-              </div>
-            </div>
-
-            <div className="message-log flex-1 overflow-y-auto p-10 space-y-6">
-              {activeTicket.messages.map((m, i) => (
-                <div key={i} className={`flex ${m.sender === 'Vet' ? 'justify-start' : 'justify-end'}`}>
-                   <div className={`max-w-[70%] p-5 rounded-3xl text-sm font-bold shadow-sm ${m.sender === 'Vet' ? 'bg-white text-gray-800 rounded-bl-none border border-gray-100' : 'bg-zunde-green text-white rounded-br-none shadow-green-900/10'}`}>
-                      <div className="text-[9px] font-black uppercase opacity-50 mb-2 tracking-widest">{m.sender}</div>
-                      <p className="leading-relaxed">{m.text}</p>
-                   </div>
+          <button
+            className="w-full py-3 bg-white/5 text-gray-400 rounded-xl text-[9px] font-black uppercase tracking-[2px] hover:bg-white/10 transition flex items-center justify-center space-x-2"
+            onClick={() => setShowHotlines(!showHotlines)}
+          >
+            <Phone size={12} aria-hidden="true" />
+            <span>Emergency Hotlines</span>
+          </button>
+          {showHotlines && (
+            <div className="mt-3 space-y-2">
+              {EMERGENCY_HOTLINES.map((h, i) => (
+                <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded-xl">
+                  <span className="text-[9px] text-gray-400 font-bold">{h.label}</span>
+                  <a href={`tel:${h.number}`} className="text-[10px] text-zunde-green font-black hover:underline">{h.number}</a>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
 
-            <div className="p-8 bg-white border-t border-gray-100">
-              <div className="flex bg-gray-50 p-2 rounded-3xl border-2 border-transparent focus-within:border-zunde-green transition shadow-inner">
-                <input 
-                  type="text" 
-                  value={chatInput}
-                  onChange={e => setChatInput(e.target.value)}
-                  placeholder="Type a message to the veterinarian..." 
-                  className="flex-1 bg-transparent px-4 py-3 outline-none font-bold text-sm"
-                  onKeyPress={e => e.key === 'Enter' && handleSendMessage()}
+      {/* MAIN CONSOLE */}
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        {isCreating ? (
+          <div className="p-12 max-w-2xl mx-auto w-full text-left overflow-y-auto">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h3 className="text-3xl font-black text-gray-800">Initialize Case</h3>
+                <p className="text-sm text-gray-400 font-bold uppercase tracking-[3px] mt-1">Official record to Ministry Portal</p>
+              </div>
+              <button onClick={() => setIsCreating(false)} className="p-2 text-gray-300 hover:text-gray-600 transition" aria-label="Cancel">
+                <X size={20} />
+              </button>
+            </div>
+            {formError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-xs font-black" role="alert">
+                {formError}
+              </div>
+            )}
+            <form onSubmit={handleCreateTicket} className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="case-type">Protocol Type</label>
+                  <select id="case-type" className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green" value={newTicket.category} onChange={e => setNewTicket({ ...newTicket, category: e.target.value })}>
+                    <option>Emergency</option>
+                    <option>Vaccination</option>
+                    <option>Trade Certification</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="animal-link">Animal Link</label>
+                  <select id="animal-link" className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green" value={newTicket.animalId} onChange={e => setNewTicket({ ...newTicket, animalId: e.target.value })}>
+                    <option value="">Select Animal...</option>
+                    {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="province">Province</label>
+                  <select id="province" className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green" value={newTicket.province} onChange={e => setNewTicket({ ...newTicket, province: e.target.value })}>
+                    <option value="">Select Province...</option>
+                    {Object.keys(ZIMBABWE_REGIONS).map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="district">District</label>
+                  <select id="district" className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green" value={newTicket.district} onChange={e => setNewTicket({ ...newTicket, district: e.target.value })} disabled={!newTicket.province}>
+                    <option value="">Select District...</option>
+                    {(ZIMBABWE_REGIONS[newTicket.province] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="subject">Report Subject <span className="text-red-400">*</span></label>
+                <input
+                  id="subject"
+                  type="text"
+                  required
+                  maxLength={120}
+                  className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green"
+                  placeholder="e.g. Suspected FMD — Chegutu Farm Block A"
+                  value={newTicket.subject}
+                  onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
                 />
-                <button onClick={handleSendMessage} className="bg-zunde-green text-white p-3 rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition">
-                  <Send size={20} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="description">Initial Description</label>
+                <textarea
+                  id="description"
+                  rows={4}
+                  maxLength={500}
+                  className="w-full p-4 bg-gray-50 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-zunde-green resize-none"
+                  placeholder="Describe symptoms, timeline, and number of animals affected..."
+                  value={newTicket.description}
+                  onChange={e => setNewTicket({ ...newTicket, description: e.target.value })}
+                />
+                <p className="text-[9px] text-gray-300 font-bold text-right">{newTicket.description.length}/500</p>
+              </div>
+              <button type="submit" className="w-full py-5 bg-zunde-green text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-green-900/20 hover:scale-[1.02] transition">
+                Submit Official Request
+              </button>
+            </form>
+          </div>
+        ) : activeTicket ? (
+          <div className="flex flex-col h-full">
+            {/* Case Header */}
+            <div className="p-6 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+              <div className="text-left">
+                <div className="flex items-center space-x-3 mb-1">
+                  <h4 className="text-xl font-black text-gray-800 leading-none">{activeTicket.subject}</h4>
+                  {activeTicket.status === 'EMERGENCY' && (
+                    <span className="flex items-center bg-red-600 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">
+                      <Zap size={10} className="mr-1" aria-hidden="true" /> LIVE EMERGENCY
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[3px]">
+                  {activeTicket.animal} · {activeTicket.province || 'Mashonaland West'} · Case {String(activeTicket.id).slice(-4)}
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                {activeTicket.isVideoAvailable && (
+                  <button className="flex items-center bg-blue-600 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:scale-105 transition">
+                    <Video size={16} className="mr-2" aria-hidden="true" /> Video Consult
+                  </button>
+                )}
+                <button className="p-3 bg-white border border-gray-200 rounded-2xl text-gray-400 hover:text-zunde-green transition" aria-label="Voice note">
+                  <Mic size={18} />
                 </button>
+              </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+              {/* Chat */}
+              <div className="flex-1 flex flex-col bg-white">
+                <div className="message-log flex-1 overflow-y-auto p-10 space-y-6" role="log" aria-label="Conversation">
+                  {activeTicket.messages.map((m, i) => (
+                    <div key={i} className={`flex ${m.sender === 'Vet' ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`max-w-[75%] p-5 rounded-[30px] text-sm font-bold shadow-sm ${m.sender === 'Vet' ? 'bg-gray-50 text-gray-800 rounded-bl-none border border-gray-100' : 'bg-zunde-green text-white rounded-br-none shadow-green-900/10'}`}>
+                        <div className="flex items-center justify-between mb-2 space-x-4">
+                          <span className="text-[9px] font-black uppercase opacity-40 tracking-widest">{m.sender === 'Vet' ? 'DVS Officer' : 'Farmer'}</span>
+                          <span className="text-[9px] opacity-40 font-bold flex items-center">
+                            <Clock size={8} className="mr-1" aria-hidden="true" />{m.time || ''}
+                          </span>
+                        </div>
+                        <p className="leading-relaxed">{m.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isVetTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-50 border border-gray-100 px-5 py-4 rounded-[30px] rounded-bl-none flex items-center space-x-2">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="text-[10px] text-gray-400 font-bold ml-2">DVS Officer is typing...</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+                <div className="p-6 bg-gray-50/50 border-t border-gray-100">
+                  <div className="flex bg-white p-2 rounded-[30px] border-2 border-transparent focus-within:border-zunde-green transition shadow-sm">
+                    <input
+                      type="text"
+                      placeholder="Type a professional message..."
+                      className="flex-1 bg-transparent px-5 py-3 outline-none font-bold text-sm"
+                      value={chatInput}
+                      maxLength={500}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      aria-label="Message input"
+                    />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!chatInput.trim()}
+                      className="bg-zunde-green text-white px-6 rounded-2xl shadow-lg hover:scale-105 transition font-black text-xs uppercase flex items-center space-x-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      aria-label="Send message"
+                    >
+                      <Send size={14} aria-hidden="true" />
+                      <span>Transmit</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Case Assets Sidebar */}
+              <div className="w-72 bg-gray-50 p-8 text-left overflow-y-auto hidden lg:block border-l border-gray-100">
+                <h5 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center">
+                  <FileText size={14} className="mr-2" aria-hidden="true" /> Case Assets
+                </h5>
+
+                {activeTicket.certificateIssued ? (
+                  <div className="certificate-box bg-white p-6 rounded-3xl border-2 border-yellow-400/30 shadow-xl relative overflow-hidden mb-6">
+                    <ShieldCheck className="absolute top-[-10px] right-[-10px] text-yellow-100 w-20 h-20" aria-hidden="true" />
+                    <div className="relative z-10">
+                      <span className="text-[8px] font-black text-zunde-green bg-green-50 px-2 py-0.5 rounded uppercase">Verified by DVS</span>
+                      <h6 className="text-sm font-black text-gray-800 mt-4 leading-none">Diagnostic Certificate</h6>
+                      <p className="text-[10px] text-gray-400 font-bold mt-2">Certified treatment plan issued for {activeTicket.animal}.</p>
+                      <button className="mt-4 w-full py-3 bg-gray-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-gray-700 transition">Download PDF</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-200 p-6 rounded-3xl text-center mb-6">
+                    <p className="text-[10px] text-gray-300 font-black uppercase">Pending Certification</p>
+                    <p className="text-[9px] text-gray-200 font-bold mt-1">Vet will issue once case is resolved</p>
+                  </div>
+                )}
+
+                <div className="field-advisory space-y-3">
+                  <h6 className="text-[10px] font-black text-zunde-green uppercase tracking-widest">Official Guideline</h6>
+                  <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
+                    <p className="text-[11px] text-green-800 font-bold leading-relaxed">
+                      Restrict the focus animal to a 10m radius. Disinfect all entry/exit points with 2% Virkon solution. Log all personnel entering the quarantine zone.
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                    <div className="flex items-center space-x-2 text-blue-700 mb-1">
+                      <MapPin size={12} aria-hidden="true" />
+                      <span className="text-[10px] font-black uppercase">Location</span>
+                    </div>
+                    <p className="text-[11px] text-blue-800 font-bold">{activeTicket.province || 'Province not specified'} — {activeTicket.district || 'District not specified'}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         ) : (
           <div className="advisory-portal p-12 overflow-y-auto text-left">
-            <div className="bg-gradient-to-br from-green-50 to-green-100/50 p-12 rounded-[40px] border border-green-100/50 mb-12 relative overflow-hidden">
-               <div className="relative z-10">
-                  <h3 className="text-3xl font-black text-zunde-green mb-2">Zimbabwe Advisory Portal</h3>
-                  <p className="text-green-800/60 font-bold uppercase tracking-widest text-sm">Official Field Intelligence & Guidance</p>
-               </div>
-               <ShieldCheck className="absolute top-[-20px] right-[-20px] text-green-200/30 w-48 h-48 rotate-12" />
+            <div className="bg-gray-900 p-12 rounded-[50px] shadow-2xl relative overflow-hidden mb-10">
+              <div className="relative z-10">
+                <span className="text-zunde-green text-xs font-black uppercase tracking-[6px] block mb-4">Digital Command Center</span>
+                <h3 className="text-4xl font-black text-white mb-4">Authority Hub</h3>
+                <p className="text-gray-500 font-bold max-w-md leading-relaxed">
+                  Official veterinary surveillance, tele-health consultations, and provincial outbreak management portal. All cases are logged with the Zimbabwe DVS.
+                </p>
+                <div className="flex space-x-4 mt-6">
+                  <div className="bg-white/5 px-4 py-2 rounded-xl">
+                    <span className="text-[9px] text-gray-500 font-black uppercase block">Active Cases</span>
+                    <strong className="text-white text-lg font-black">{tickets.filter(t => t.status !== 'Certified').length}</strong>
+                  </div>
+                  <div className="bg-white/5 px-4 py-2 rounded-xl">
+                    <span className="text-[9px] text-gray-500 font-black uppercase block">Certified</span>
+                    <strong className="text-white text-lg font-black">{tickets.filter(t => t.certificateIssued).length}</strong>
+                  </div>
+                </div>
+              </div>
+              <Radar className="absolute bottom-[-50px] right-[-50px] text-zunde-green/10 w-80 h-80" aria-hidden="true" />
             </div>
 
             <div className="grid grid-cols-2 gap-8">
-              {LOCAL_ADVISORY.map(adv => (
-                <div key={adv.id} className="bg-white p-8 rounded-[30px] shadow-sm border border-gray-100 hover:shadow-xl hover:border-zunde-green/20 transition group">
-                  <div className="flex justify-between items-start mb-6">
-                    <span className="text-[10px] font-black text-zunde-green bg-green-50 px-3 py-1 rounded-full uppercase tracking-widest">{adv.source}</span>
-                    <CheckCircle className="text-gray-100 group-hover:text-zunde-green transition" size={20} />
-                  </div>
-                  <h4 className="text-lg font-black text-gray-800 mb-3">{adv.topic}</h4>
-                  <p className="text-sm text-gray-400 font-bold leading-relaxed">{adv.advice}</p>
-                  <button className="mt-6 text-xs font-black text-zunde-green uppercase tracking-widest hover:underline">Read Full Bulletin</button>
+              <div className="p-10 bg-gray-50 rounded-[40px] hover:bg-gray-100 transition cursor-pointer group" onClick={() => setIsCreating(true)}>
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-zunde-green shadow-sm mb-6 group-hover:scale-110 transition duration-500">
+                  <Zap size={32} aria-hidden="true" />
                 </div>
-              ))}
+                <h4 className="text-xl font-black text-gray-800 mb-2">Initialize Emergency Case</h4>
+                <p className="text-sm text-gray-400 font-bold leading-relaxed">Direct encrypted link to the Provincial Duty Officer for immediate health intervention.</p>
+              </div>
+              <div className="p-10 bg-gray-50 rounded-[40px] border-2 border-transparent hover:border-zunde-green transition cursor-pointer group" onClick={() => { setNewTicket(p => ({ ...p, category: 'Trade Certification' })); setIsCreating(true); }}>
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-zunde-green shadow-sm mb-6 group-hover:scale-110 transition duration-500">
+                  <ShieldCheck size={32} aria-hidden="true" />
+                </div>
+                <h4 className="text-xl font-black text-gray-800 mb-2">Request Trade Certificate</h4>
+                <p className="text-sm text-gray-400 font-bold leading-relaxed">Official livestock health sign-off required for inter-provincial movement and sales in Zimbabwe.</p>
+              </div>
             </div>
           </div>
         )}

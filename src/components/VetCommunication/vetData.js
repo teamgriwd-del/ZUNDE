@@ -1,24 +1,14 @@
 export const ZIMBABWE_REGIONS = {
-  provinces: [
-    "Mashonaland Central",
-    "Mashonaland East",
-    "Mashonaland West",
-    "Matabeleland North",
-    "Matabeleland South",
-    "Midlands",
-    "Manicaland",
-    "Masvingo",
-    "Harare",
-    "Bulawayo"
-  ],
-  districts: {
-    "Mashonaland Central": ["Bindura", "Centenary", "Guruve", "Mount Darwin", "Muzarabani", "Mazowe", "Rushinga", "Shamva"],
-    "Mashonaland East": ["Chikomba", "Goromonzi", "Marondera", "Mudzi", "Murehwa", "Mutoko", "Seke", "Uzumba-Maramba-Pfungwe"],
-    "Mashonaland West": ["Chegutu", "Hurungwe", "Kariba", "Makonde", "Mhondoro-Ngezi", "Sanyati", "Zvimba"],
-    "Midlands": ["Chirumhanzu", "Gokwe North", "Gokwe South", "Gweru", "Kwekwe", "Mberengwa", "Shurugwi", "Zvishavane"],
-    "Manicaland": ["Buhera", "Chimanimani", "Chipinge", "Makoni", "Mutare", "Mutasa", "Nyanga"],
-    "Masvingo": ["Bikita", "Chiredzi", "Chivi", "Gutu", "Masvingo", "Mwenezi", "Zaka"]
-  }
+  "Mashonaland Central": ["Bindura", "Centenary", "Guruve", "Mount Darwin", "Muzarabani", "Mazowe", "Rushinga", "Shamva"],
+  "Mashonaland East": ["Chikomba", "Goromonzi", "Marondera", "Mudzi", "Murehwa", "Mutoko", "Seke", "Uzumba-Maramba-Pfungwe"],
+  "Mashonaland West": ["Chegutu", "Hurungwe", "Kariba", "Makonde", "Mhondoro-Ngezi", "Sanyati", "Zvimba"],
+  "Matabeleland North": ["Binga", "Bubi", "Hwange", "Lupane", "Nkayi", "Tsholotsho", "Umguza"],
+  "Matabeleland South": ["Beitbridge", "Bulilima", "Gwanda", "Insiza", "Matobo", "Umzingwane"],
+  "Midlands": ["Chirumhanzu", "Gokwe North", "Gokwe South", "Gweru", "Kwekwe", "Mberengwa", "Shurugwi", "Zvishavane"],
+  "Manicaland": ["Buhera", "Chimanimani", "Chipinge", "Makoni", "Mutare", "Mutasa", "Nyanga"],
+  "Masvingo": ["Bikita", "Chiredzi", "Chivi", "Gutu", "Masvingo", "Mwenezi", "Zaka"],
+  "Harare": ["Harare Urban", "Epworth", "Seke Rural"],
+  "Bulawayo": ["Bulawayo Urban", "Umguza"]
 };
 
 export const LOCAL_ADVISORY = [
@@ -43,7 +33,7 @@ export const LOCAL_ADVISORY = [
 ];
 
 export const EMERGENCY_HOTLINES = [
-  { office: "Head Office (Harare)", phone: "+263 242 706331" },
-  { office: "Bulawayo Regional", phone: "+263 292 232145" },
-  { office: "Gweru Regional", phone: "+263 54 222123" }
+  { label: "DVS Head Office (Harare)", number: "+263 242 706331" },
+  { label: "Bulawayo Regional", number: "+263 292 232145" },
+  { label: "Gweru Regional", number: "+263 54 222123" }
 ];

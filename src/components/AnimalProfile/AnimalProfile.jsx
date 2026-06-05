@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  PlusCircle, Search, Filter, MoreHorizontal, 
-  ChevronRight, Calendar, Weight, Info, History, Users, ShieldCheck, X, TrendingUp, LineChart as ChartIcon
+import { BREED_PROFILES } from '../HealthManagement/healthData';
+import {
+  PlusCircle, Search, Filter, MoreHorizontal,
+  ChevronRight, Calendar, Weight, Info, History, Users, ShieldCheck, X, TrendingUp, LineChart as ChartIcon, Tag
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import './AnimalProfile.css';
 
-const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
+const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
   const [animal, setAnimal] = useState({
     name: '', species: 'Cattle', breed: '', birthDate: '', 
     tagId: '', brandId: '', sireId: '', damId: '', 
@@ -38,12 +39,16 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const bw = parseFloat(animal.birthWeight);
+    if (!animal.name.trim()) return;
+    if (!animal.birthDate) return;
+    if (isNaN(bw) || bw <= 0) return;
     const age = calculateAge(animal.birthDate);
-    onAddAnimal({ ...animal, id: Date.now(), age });
-    setAnimal({ 
-      name: '', species: 'Cattle', breed: '', birthDate: '', 
-      tagId: '', brandId: '', sireId: '', damId: '', 
-      birthWeight: '', currentWeight: '' 
+    onAddAnimal({ ...animal, id: Date.now(), age, birthWeight: bw, currentWeight: bw });
+    setAnimal({
+      name: '', species: 'Cattle', breed: '', birthDate: '',
+      tagId: '', brandId: '', sireId: '', damId: '',
+      birthWeight: '', currentWeight: ''
     });
     setIsRegistering(false);
   };
@@ -216,7 +221,16 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100"><div className="text-[10px] font-black text-gray-400 uppercase mb-2">Age</div><div className="text-lg font-black text-gray-800">{selectedAnimal.age}</div></div>
             <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100"><div className="text-[10px] font-black text-gray-400 uppercase mb-2">Weight</div><div className="text-lg font-black text-gray-800">{selectedAnimal.currentWeight} KG</div></div>
-            <div className="bg-gray-50 p-6 rounded-[30px] border border-gray-100"><div className="text-[10px] font-black text-gray-400 uppercase mb-2">Status</div><div className="text-lg font-black text-zunde-green uppercase">Optimal</div></div>
+            <button
+              onClick={() => onListAnimal && onListAnimal(selectedAnimal.id)}
+              className={`p-6 rounded-[30px] border text-left transition hover:scale-105 ${selectedAnimal.forSale ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-100 hover:border-zunde-green'}`}
+            >
+              <div className="text-[10px] font-black text-gray-400 uppercase mb-2">Market Status</div>
+              <div className={`text-sm font-black uppercase ${selectedAnimal.forSale ? 'text-yellow-600' : 'text-zunde-green'}`}>
+                {selectedAnimal.forSale ? 'Listed for Sale' : 'Not for Sale'}
+              </div>
+              <p className="text-[9px] font-bold text-gray-300 mt-1 uppercase">{selectedAnimal.forSale ? 'Click to delist' : 'Click to list'}</p>
+            </button>
           </div>
         </div>
       </div>
@@ -271,16 +285,49 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog }) => {
           <div className="flex justify-between items-center mb-10"><h3 className="text-3xl font-black text-gray-800">New Registration</h3><button onClick={() => setIsRegistering(false)} className="text-gray-400 hover:text-gray-600 font-black text-2xl">×</button></div>
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Animal Name</label><input type="text" placeholder="e.g. Bessie" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.name} onChange={e => setAnimal({...animal, name: e.target.value})} /></div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Species</label><select className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={animal.species} onChange={e => setAnimal({...animal, species: e.target.value})}><option>Cattle</option><option>Goat</option><option>Sheep</option><option>Pig</option></select></div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-name">Animal Name <span className="text-red-400">*</span></label>
+                <input id="reg-name" type="text" placeholder="e.g. Bessie" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.name} onChange={e => setAnimal({...animal, name: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-species">Species</label>
+                <select id="reg-species" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={animal.species} onChange={e => setAnimal({...animal, species: e.target.value, breed: ''})}>
+                  <option>Cattle</option><option>Goat</option><option>Sheep</option><option>Pig</option>
+                </select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ear Tag ID</label><input type="text" placeholder="TAG-XXX" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.tagId} onChange={e => setAnimal({...animal, tagId: e.target.value})} /></div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Birth Date</label><input type="date" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.birthDate} onChange={e => setAnimal({...animal, birthDate: e.target.value})} /></div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-breed">Breed</label>
+                <select id="reg-breed" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold appearance-none" value={animal.breed} onChange={e => setAnimal({...animal, breed: e.target.value})}>
+                  <option value="">Select Breed...</option>
+                  {(BREED_PROFILES[animal.species] || []).map(b => <option key={b.breed} value={b.breed}>{b.breed}</option>)}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-tag">Ear Tag ID</label>
+                <input id="reg-tag" type="text" placeholder="TAG-XXX" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.tagId} onChange={e => setAnimal({...animal, tagId: e.target.value})} />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Birth Weight (KG)</label><input type="number" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.birthWeight} onChange={e => setAnimal({...animal, birthWeight: e.target.value, currentWeight: e.target.value})} /></div>
-              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Owner Brand ID</label><input type="text" placeholder="AR-MP" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.brandId} onChange={e => setAnimal({...animal, brandId: e.target.value})} /></div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-dob">Birth Date <span className="text-red-400">*</span></label>
+                <input id="reg-dob" type="date" required max={new Date().toISOString().split('T')[0]} className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.birthDate} onChange={e => setAnimal({...animal, birthDate: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-weight">Birth Weight (KG) <span className="text-red-400">*</span></label>
+                <input id="reg-weight" type="number" min="0.1" step="0.1" required className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.birthWeight} onChange={e => setAnimal({...animal, birthWeight: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-brand">Owner Brand ID</label>
+                <input id="reg-brand" type="text" placeholder="AR-MP" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.brandId} onChange={e => setAnimal({...animal, brandId: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest" htmlFor="reg-sire">Sire ID (Father)</label>
+                <input id="reg-sire" type="text" placeholder="S-XXX" className="w-full p-4 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-zunde-green outline-none font-bold" value={animal.sireId} onChange={e => setAnimal({...animal, sireId: e.target.value})} />
+              </div>
             </div>
             <button type="submit" className="w-full py-5 bg-zunde-green text-white rounded-3xl font-black uppercase shadow-xl hover:scale-[1.02] transition">Complete Herd Registration</button>
           </form>
