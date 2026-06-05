@@ -1,42 +1,88 @@
 import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { COLORS } from './config';
 
-import DashboardScreen from './screens/DashboardScreen';
+import HomeScreen       from './screens/HomeScreen';
+import HerdScreen       from './screens/HerdScreen';
 import MarketplaceScreen from './screens/MarketplaceScreen';
 import FeedAnalyzerScreen from './screens/FeedAnalyzerScreen';
+import ProfileScreen    from './screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
+
+const TabIcon = ({ emoji, label, focused }) => (
+  <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
+    <Text style={styles.tabEmoji}>{emoji}</Text>
+    <Text style={[styles.tabLabel, { color: focused ? COLORS.primary : '#999' }]}>{label}</Text>
+  </View>
+);
 
 export default function App() {
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#2e7d32',
-          tabBarInactiveTintColor: 'gray',
-          tabBarStyle: { backgroundColor: '#fff', paddingBottom: 5 },
-          headerStyle: { backgroundColor: '#2e7d32' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
-        }}>
+          headerShown: false,
+          tabBarStyle: styles.tabBar,
+          tabBarShowLabel: false,
+        }}
+      >
         <Tab.Screen
-          name="Dashboard"
-          component={DashboardScreen}
-          options={{ tabBarIcon: () => <Text>📊</Text>, title: 'Zunde - Dashboard' }}
+          name="Home"
+          component={HomeScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home"    focused={focused} /> }}
         />
         <Tab.Screen
-          name="Marketplace"
+          name="Herd"
+          component={HerdScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🐄" label="Herd"    focused={focused} /> }}
+        />
+        <Tab.Screen
+          name="Market"
           component={MarketplaceScreen}
-          options={{ tabBarIcon: () => <Text>🛒</Text>, title: 'Marketplace' }}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Market"  focused={focused} /> }}
         />
         <Tab.Screen
-          name="Feed Analyzer"
+          name="Feed"
           component={FeedAnalyzerScreen}
-          options={{ tabBarIcon: () => <Text>🌾</Text>, title: 'Feed Analyzer' }}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🌾" label="Feed"    focused={focused} /> }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} /> }}
         />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e8f5e9',
+    height: 70,
+    paddingBottom: 8,
+    paddingTop: 6,
+    elevation: 12,
+    shadowColor: '#1b5e20',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  tabIcon: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  tabIconActive: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 12,
+  },
+  tabEmoji:  { fontSize: 20 },
+  tabLabel:  { fontSize: 10, fontWeight: '700', marginTop: 2 },
+});
