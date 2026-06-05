@@ -289,30 +289,39 @@ function App() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden bg-white relative">
-        <header className="absolute top-8 right-8 z-30 flex items-center space-x-4">
-             <div className="relative">
-                <button className={`p-3 rounded-2xl transition-all duration-300 ${isNotifOpen ? 'bg-zunde-green text-white shadow-xl' : 'bg-white text-gray-400 shadow-sm hover:text-zunde-green border border-gray-100'}`} onClick={() => setIsNotifOpen(!isNotifOpen)}>
-                    <Bell size={20} />
-                    {notifications.length > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>}
-                </button>
-                {isNotifOpen && (
-                    <div className="absolute top-16 right-0 w-80 bg-white rounded-[35px] shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-4 duration-500 p-6 text-left">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Mesh Notifications</h4>
-                        <div className="space-y-4">
-                            {notifications.map(n => (
-                                <div key={n.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-2xl border-b-4 border-gray-100">
-                                    <div className={`w-2 h-2 rounded-full mt-1.5 ${n.type === 'Critical' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                    <div><strong className="text-xs font-black text-gray-800 uppercase block">{n.title}</strong><p className="text-[10px] text-gray-500 font-bold leading-tight mt-0.5">{n.msg}</p></div>
-                                </div>
-                            ))}
-                        </div>
+        {/* Notification bell — floats top-right on all tabs */}
+        <div className="absolute top-5 right-6 z-30">
+          <div className="relative">
+            <button
+              className={`p-2.5 rounded-2xl transition-all duration-300 ${isNotifOpen ? 'bg-zunde-green text-white shadow-xl' : 'bg-white text-gray-400 shadow-sm hover:text-zunde-green border border-gray-100'}`}
+              onClick={() => setIsNotifOpen(!isNotifOpen)}
+              aria-label="Notifications"
+            >
+              <Bell size={18} />
+              {notifications.length > 0 && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />}
+            </button>
+            {isNotifOpen && (
+              <div className="absolute top-14 right-0 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden animate-in slide-in-from-top-4 duration-300 p-5 text-left z-40">
+                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Notifications</h4>
+                <div className="space-y-3">
+                  {notifications.map(n => (
+                    <div key={n.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-2xl">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.type === 'Critical' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                      <div>
+                        <strong className="text-xs font-black text-gray-800 uppercase block">{n.title}</strong>
+                        <p className="text-[10px] text-gray-500 font-bold leading-tight mt-0.5">{n.msg}</p>
+                      </div>
                     </div>
-                )}
-             </div>
-        </header>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
-        {activeTab === 'dashboard' && <ErrorBoundary><ZundeDashboard animals={animals} auditLog={auditLog} setActiveTab={setActiveTab} currentUser={currentUser} inventory={inventory} onListAnimal={handleListAnimal} notifications={notifications} /></ErrorBoundary>}
-        <div className="flex-1 overflow-y-auto">
+        {/* Tab content — vet uses overflow-hidden for messenger layout; others scroll */}
+        <div className={`flex-1 ${activeTab === 'vet' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {activeTab === 'dashboard' && <ErrorBoundary><ZundeDashboard animals={animals} auditLog={auditLog} setActiveTab={setActiveTab} currentUser={currentUser} inventory={inventory} onListAnimal={handleListAnimal} notifications={notifications} /></ErrorBoundary>}
           {activeTab === 'profile' && <ErrorBoundary><AnimalProfile animals={animals} onAddAnimal={addAnimal} auditLog={auditLog} currentUser={currentUser} onListAnimal={handleListAnimal} /></ErrorBoundary>}
           {activeTab === 'health' && <ErrorBoundary><HealthManagement animals={animals} completedTasks={completedTasks} setCompletedTasks={setCompletedTasks} auditLog={auditLog} setAuditLog={setAuditLog} inventory={inventory} setInventory={setInventory} /></ErrorBoundary>}
           {activeTab === 'disease' && <ErrorBoundary><DiseaseDetection animals={animals} onAddAuditLog={addAuditLog} /></ErrorBoundary>}
