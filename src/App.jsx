@@ -4,6 +4,8 @@ import AnimalProfile     from './components/AnimalProfile/AnimalProfile';
 import HealthManagement  from './components/HealthManagement/HealthManagement';
 import VetCommunication  from './components/VetCommunication/VetCommunication';
 import HardwareSimulation from './components/HardwareSimulation/HardwareSimulation';
+import Marketplace       from './components/Marketplace/Marketplace';
+import FeedAnalyzer      from './components/FeedAnalyzer/FeedAnalyzer';
 import JindaRaMambo      from './components/IntelAI/ZundeIntelAI';
 import AuthPortal        from './components/IntelAI/AuthPortal';
 import ErrorBoundary     from './components/ErrorBoundary';
@@ -13,7 +15,7 @@ import {
   Bell, LogOut, ShieldCheck, TrendingUp, Package, ShoppingCart, Activity,
   Truck, BarChart3, Globe, AlertTriangle, CheckCircle, ChevronRight,
   Zap, Clock, ArrowRight, Tag, Pill, Wifi, MapPin, FileText,
-  RefreshCw, DollarSign, Target, Box, PhoneCall, Star
+  RefreshCw, DollarSign, Target, Box, PhoneCall, Star, Wheat, Store
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import './App.css';
@@ -901,27 +903,29 @@ const NAV_SECTIONS = {
     {
       section: 'Overview',
       items: [
-        { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard',    desc: 'Your farm at a glance' },
+        { tab: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',     desc: 'Your farm at a glance' },
       ]
     },
     {
       section: 'Herd Management',
       items: [
-        { tab: 'profile',   icon: Users,           label: 'Herd Registry', desc: 'Animal records & passports' },
-        { tab: 'health',    icon: HeartPulse,      label: 'Lifecycle',      desc: 'Vaccines & health protocols' },
-        { tab: 'disease',   icon: Stethoscope,     label: 'Diagnostics',    desc: 'AI disease checker' },
+        { tab: 'profile',     icon: Users,           label: 'Herd Registry', desc: 'Animal records & passports' },
+        { tab: 'health',      icon: HeartPulse,      label: 'Lifecycle',     desc: 'Vaccines & health protocols' },
+        { tab: 'disease',     icon: Stethoscope,     label: 'Diagnostics',   desc: 'AI disease checker' },
+        { tab: 'feed',        icon: Wheat,           label: 'Feed Analyzer', desc: 'Livestock nutrition database' },
       ]
     },
     {
-      section: 'Connect',
+      section: 'Trade & Market',
       items: [
-        { tab: 'vet',       icon: MessageSquare,   label: 'Vet Messenger',  desc: 'Chat with a licensed vet' },
+        { tab: 'marketplace', icon: Store,           label: 'Marketplace',   desc: 'Buy & sell livestock, feed, produce' },
+        { tab: 'vet',         icon: MessageSquare,   label: 'Vet Messenger', desc: 'Chat with a licensed vet' },
       ]
     },
     {
       section: 'Monitoring',
       items: [
-        { tab: 'iot',       icon: Radio,           label: 'IoT Monitor',    desc: 'Live ear tag sensor data' },
+        { tab: 'iot',         icon: Radio,           label: 'IoT Monitor',   desc: 'Live ear tag sensor data' },
       ]
     },
   ],
@@ -929,27 +933,29 @@ const NAV_SECTIONS = {
     {
       section: 'Overview',
       items: [
-        { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard',    desc: 'Provincial health overview' },
+        { tab: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',     desc: 'Provincial health overview' },
       ]
     },
     {
       section: 'Clinical Tools',
       items: [
-        { tab: 'profile',   icon: Users,           label: 'Herd Registry', desc: 'Animal identity & records' },
-        { tab: 'health',    icon: HeartPulse,      label: 'Lifecycle',      desc: 'Vaccination & protocols' },
-        { tab: 'disease',   icon: Stethoscope,     label: 'Diagnostics',    desc: 'Disease identification AI' },
+        { tab: 'profile',     icon: Users,           label: 'Herd Registry', desc: 'Animal identity & records' },
+        { tab: 'health',      icon: HeartPulse,      label: 'Lifecycle',     desc: 'Vaccination & protocols' },
+        { tab: 'disease',     icon: Stethoscope,     label: 'Diagnostics',   desc: 'Disease identification AI' },
+        { tab: 'feed',        icon: Wheat,           label: 'Feed Analyzer', desc: 'Nutritional advice for farmers' },
       ]
     },
     {
       section: 'Authority',
       items: [
-        { tab: 'vet',       icon: MessageSquare,   label: 'Case Manager',   desc: 'Farmer consultations & certs' },
+        { tab: 'vet',         icon: MessageSquare,   label: 'Case Manager',  desc: 'Farmer consultations & certs' },
+        { tab: 'marketplace', icon: Store,           label: 'Marketplace',   desc: 'Monitor trade & listings' },
       ]
     },
     {
       section: 'Surveillance',
       items: [
-        { tab: 'iot',       icon: Radio,           label: 'IoT Stream',     desc: 'Live herd health sensors' },
+        { tab: 'iot',         icon: Radio,           label: 'IoT Stream',    desc: 'Live herd health sensors' },
       ]
     },
   ],
@@ -957,14 +963,16 @@ const NAV_SECTIONS = {
     {
       section: 'Overview',
       items: [
-        { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard',    desc: 'Orders & fulfillment summary' },
+        { tab: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',     desc: 'Orders & fulfillment summary' },
       ]
     },
     {
       section: 'Operations',
       items: [
-        { tab: 'health',    icon: Package,         label: 'Supply Chain',   desc: 'Inventory & order management' },
-        { tab: 'vet',       icon: MessageSquare,   label: 'Farmer Comms',   desc: 'Message farms you supply' },
+        { tab: 'marketplace', icon: Store,           label: 'Marketplace',   desc: 'List medicines, feed & equipment' },
+        { tab: 'feed',        icon: Wheat,           label: 'Feed Database', desc: 'Nutritional specs for your products' },
+        { tab: 'health',      icon: Package,         label: 'Supply Chain',  desc: 'Inventory & order management' },
+        { tab: 'vet',         icon: MessageSquare,   label: 'Farmer Comms',  desc: 'Message farms you supply' },
       ]
     },
   ],
@@ -972,14 +980,21 @@ const NAV_SECTIONS = {
     {
       section: 'Overview',
       items: [
-        { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard',    desc: 'Market overview & listings' },
+        { tab: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',     desc: 'Market overview & your bids' },
       ]
     },
     {
-      section: 'Marketplace',
+      section: 'Buy & Trade',
       items: [
-        { tab: 'profile',   icon: ShoppingCart,    label: 'Browse Listings', desc: 'All verified livestock for sale' },
-        { tab: 'vet',       icon: MessageSquare,   label: 'Contact Sellers', desc: 'Message farmers directly' },
+        { tab: 'marketplace', icon: Store,           label: 'Marketplace',   desc: 'Browse all livestock & produce' },
+        { tab: 'profile',     icon: ShoppingCart,    label: 'Verified Stock', desc: 'Animals with health passports' },
+        { tab: 'feed',        icon: Wheat,           label: 'Feed Analyzer', desc: 'Check nutrition before purchasing' },
+      ]
+    },
+    {
+      section: 'Connect',
+      items: [
+        { tab: 'vet',         icon: MessageSquare,   label: 'Contact Sellers', desc: 'Message farmers & suppliers' },
       ]
     },
   ],
@@ -1142,11 +1157,13 @@ function App() {
               {role === 'Retailer'     && <RetailerDashboard     animals={animals} setActiveTab={setActiveTab} currentUser={currentUser} />}
             </ErrorBoundary>
           )}
-          {activeTab === 'profile' && <ErrorBoundary><AnimalProfile animals={animals} onAddAnimal={addAnimal} auditLog={auditLog} currentUser={currentUser} onListAnimal={handleListAnimal} /></ErrorBoundary>}
-          {activeTab === 'health'  && <ErrorBoundary><HealthManagement animals={animals} completedTasks={completedTasks} setCompletedTasks={setCompletedTasks} auditLog={auditLog} setAuditLog={setAuditLog} inventory={inventory} setInventory={setInventory} /></ErrorBoundary>}
-          {activeTab === 'disease' && <ErrorBoundary><DiseaseDetection animals={animals} onAddAuditLog={addAuditLog} /></ErrorBoundary>}
-          {activeTab === 'vet'     && <ErrorBoundary><VetCommunication animals={animals} currentUser={currentUser} /></ErrorBoundary>}
-          {activeTab === 'iot'     && <ErrorBoundary><HardwareSimulation animals={animals} /></ErrorBoundary>}
+          {activeTab === 'profile'     && <ErrorBoundary><AnimalProfile animals={animals} onAddAnimal={addAnimal} auditLog={auditLog} currentUser={currentUser} onListAnimal={handleListAnimal} /></ErrorBoundary>}
+          {activeTab === 'health'      && <ErrorBoundary><HealthManagement animals={animals} completedTasks={completedTasks} setCompletedTasks={setCompletedTasks} auditLog={auditLog} setAuditLog={setAuditLog} inventory={inventory} setInventory={setInventory} /></ErrorBoundary>}
+          {activeTab === 'disease'     && <ErrorBoundary><DiseaseDetection animals={animals} onAddAuditLog={addAuditLog} /></ErrorBoundary>}
+          {activeTab === 'vet'         && <ErrorBoundary><VetCommunication animals={animals} currentUser={currentUser} /></ErrorBoundary>}
+          {activeTab === 'iot'         && <ErrorBoundary><HardwareSimulation animals={animals} /></ErrorBoundary>}
+          {activeTab === 'marketplace' && <ErrorBoundary><Marketplace currentUser={currentUser} animals={animals} onListAnimal={handleListAnimal} /></ErrorBoundary>}
+          {activeTab === 'feed'        && <ErrorBoundary><FeedAnalyzer /></ErrorBoundary>}
         </div>
 
         <JindaRaMambo setActiveTab={setActiveTab} animals={animals} />
