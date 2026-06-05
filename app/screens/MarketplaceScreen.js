@@ -139,7 +139,7 @@ export default function MarketplaceScreen() {
             <Text style={styles.callBtnText}>📞 Call</Text>
           </TouchableOpacity>
         ) : null}
-        <TouchableOpacity style={[styles.bidBtn, { backgroundColor: CAT_COLOR[item.category] || COLORS.primary }]} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.bidBtn, { backgroundColor: CAT_COLOR[item.category] || COLORS.primary }]} onPress={() => item.phone && Linking.openURL(`tel:${item.phone}`)} activeOpacity={0.8}>
           <Text style={styles.bidBtnText}>Enquire →</Text>
         </TouchableOpacity>
       </View>
@@ -183,7 +183,7 @@ export default function MarketplaceScreen() {
         data={filtered}
         keyExtractor={i => String(i.id)}
         renderItem={renderItem}
-        contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.primary} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>

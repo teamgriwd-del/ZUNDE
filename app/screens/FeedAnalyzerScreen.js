@@ -21,14 +21,15 @@ const CAT_BG    = { protein:'#e3f2fd', energy:'#fff3e0', roughage:'#e8f5e9', min
 
 const SPECIES = ['All', 'Cattle', 'Goat', 'Sheep', 'Pig'];
 
-const NutrientBar = ({ label, value, max, color }) => (
+// value = numeric, display = formatted string shown to user
+const NutrientBar = ({ label, value, display, max, color }) => (
   <View style={{ marginBottom: 8 }}>
     <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom: 4 }}>
       <Text style={styles.nutriLabel}>{label}</Text>
-      <Text style={[styles.nutriVal, { color }]}>{value}</Text>
+      <Text style={[styles.nutriVal, { color }]}>{display}</Text>
     </View>
     <View style={styles.barBg}>
-      <View style={[styles.barFill, { width: `${Math.min(100, (value / max) * 100)}%`, backgroundColor: color }]} />
+      <View style={[styles.barFill, { width: `${Math.min(100, (parseFloat(value) / max) * 100)}%`, backgroundColor: color }]} />
     </View>
   </View>
 );
@@ -77,9 +78,9 @@ export default function FeedAnalyzerScreen() {
               </View>
             </View>
             <View style={styles.inlineStats}>
-              <Text style={styles.inlineStat}>🥩 <Text style={{ color: '#1565c0', fontWeight:'800' }}>{item.protein_percent}%</Text></Text>
-              <Text style={styles.inlineStat}>⚡ <Text style={{ color:'#e65100', fontWeight:'800' }}>{item.energy_mj} MJ</Text></Text>
-              <Text style={styles.inlineStat}>🌿 <Text style={{ color:'#2e7d32', fontWeight:'800' }}>{item.fibre_percent}%</Text></Text>
+              <Text style={styles.inlineStat}>Protein <Text style={{ color: '#1565c0', fontWeight:'800' }}>{item.protein_percent}%</Text></Text>
+              <Text style={styles.inlineStat}>Energy <Text style={{ color:'#e65100', fontWeight:'800' }}>{item.energy_mj}MJ</Text></Text>
+              <Text style={styles.inlineStat}>Fibre <Text style={{ color:'#2e7d32', fontWeight:'800' }}>{item.fibre_percent}%</Text></Text>
             </View>
           </View>
           <Text style={{ fontSize: 16, color: COLORS.muted }}>{isOpen ? '▲' : '▼'}</Text>
@@ -89,11 +90,11 @@ export default function FeedAnalyzerScreen() {
           <View style={styles.expanded}>
             {item.description ? <Text style={styles.desc}>{item.description}</Text> : null}
             <Text style={styles.nutriTitle}>Nutritional Breakdown</Text>
-            <NutrientBar label="🥩 Protein"    value={`${item.protein_percent}%`}    max={50}  color="#1565c0" />
-            <NutrientBar label="⚡ Energy"     value={`${item.energy_mj} MJ/kg`}     max={16}  color="#e65100" />
-            <NutrientBar label="🌿 Fibre"      value={`${item.fibre_percent}%`}       max={35}  color="#2e7d32" />
-            <NutrientBar label="🦴 Calcium"    value={`${item.calcium_percent}%`}     max={30}  color="#6a1b9a" />
-            <NutrientBar label="💊 Phosphorus" value={`${item.phosphorus_percent}%`}  max={20}  color="#c62828" />
+            <NutrientBar label="Protein"    value={item.protein_percent}    display={`${item.protein_percent}%`}       max={50}  color="#1565c0" />
+            <NutrientBar label="Energy"     value={item.energy_mj}          display={`${item.energy_mj} MJ/kg`}       max={16}  color="#e65100" />
+            <NutrientBar label="Fibre"      value={item.fibre_percent}      display={`${item.fibre_percent}%`}        max={35}  color="#2e7d32" />
+            <NutrientBar label="Calcium"    value={item.calcium_percent}    display={`${item.calcium_percent}%`}      max={30}  color="#6a1b9a" />
+            <NutrientBar label="Phosphorus" value={item.phosphorus_percent} display={`${item.phosphorus_percent}%`}  max={20}  color="#c62828" />
             {speciesList.length > 0 && (
               <View style={styles.speciesRow}>
                 <Text style={styles.speciesTitle}>Suitable for: </Text>
@@ -115,14 +116,13 @@ export default function FeedAnalyzerScreen() {
         <View>
           <Text style={styles.headerSub}>ZUNDE RaMambo</Text>
           <Text style={styles.headerTitle}>Feed Analyzer</Text>
-          <Text style={styles.headerDesc}>Zimbabwe livestock nutrition database</Text>
+          <Text style={styles.headerDesc}>Zimbabwe livestock nutrition database · {feeds.length} feeds</Text>
         </View>
-        <Text style={{ fontSize: 40 }}>🌾</Text>
       </View>
 
       {/* Info strip */}
       <View style={styles.infoStrip}>
-        <Text style={styles.infoText}>💡 Tap any feed to see the full nutritional breakdown. Use this to plan a balanced diet for your herd.</Text>
+        <Text style={styles.infoText}>Tap any feed to see the full nutritional breakdown. Use this to plan a balanced diet for your herd.</Text>
       </View>
 
       {/* Search */}
@@ -150,7 +150,7 @@ export default function FeedAnalyzerScreen() {
         data={filtered}
         keyExtractor={i => String(i.id)}
         renderItem={renderItem}
-        contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.primary} />}
         ListHeaderComponent={
           <Text style={styles.resultCount}>{filtered.length} feed type{filtered.length !== 1 ? 's' : ''}{species !== 'All' ? ` for ${species}` : ''}</Text>

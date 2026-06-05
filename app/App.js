@@ -1,61 +1,129 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from './config';
 
-import HomeScreen       from './screens/HomeScreen';
-import HerdScreen       from './screens/HerdScreen';
-import MarketplaceScreen from './screens/MarketplaceScreen';
+import LoginScreen        from './screens/LoginScreen';
+import DashboardScreen    from './screens/DashboardScreen';
+import HerdScreen         from './screens/HerdScreen';
+import MarketplaceScreen  from './screens/MarketplaceScreen';
 import FeedAnalyzerScreen from './screens/FeedAnalyzerScreen';
-import ProfileScreen    from './screens/ProfileScreen';
+import VetMessengerScreen from './screens/VetMessengerScreen';
+import ProfileScreen      from './screens/ProfileScreen';
+import IoTScreen          from './screens/IoTScreen';
+import JindaRaMamboFAB    from './components/JindaRaMamboFAB';
 
 const Tab = createBottomTabNavigator();
 
-const TabIcon = ({ emoji, label, focused }) => (
-  <View style={[styles.tabIcon, focused && styles.tabIconActive]}>
-    <Text style={styles.tabEmoji}>{emoji}</Text>
-    <Text style={[styles.tabLabel, { color: focused ? COLORS.primary : '#999' }]}>{label}</Text>
+const ROLE_TABS = {
+  Farmer: [
+    { name: 'Dashboard', emoji: '🏠', label: 'Home',    screen: DashboardScreen },
+    { name: 'Herd',      emoji: '🐄', label: 'Herd',    screen: HerdScreen },
+    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'IoT',       emoji: '📡', label: 'IoT',     screen: IoTScreen },
+    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+  ],
+  Veterinarian: [
+    { name: 'Dashboard', emoji: '📋', label: 'Home',    screen: DashboardScreen },
+    { name: 'Herd',      emoji: '🐄', label: 'Animals', screen: HerdScreen },
+    { name: 'IoT',       emoji: '📡', label: 'IoT',     screen: IoTScreen },
+    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Vet',       emoji: '💬', label: 'Cases',   screen: VetMessengerScreen },
+    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+  ],
+  Supplier: [
+    { name: 'Dashboard', emoji: '📦', label: 'Home',    screen: DashboardScreen },
+    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'Vet',       emoji: '💬', label: 'Comms',   screen: VetMessengerScreen },
+    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+  ],
+  Retailer: [
+    { name: 'Dashboard', emoji: '🏪', label: 'Home',    screen: DashboardScreen },
+    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'Vet',       emoji: '💬', label: 'Contact', screen: VetMessengerScreen },
+    { name: 'Profile',   emoji: '👤', label: 'Profile', screen: ProfileScreen },
+  ],
+};
+
+const ROLE_COLORS = {
+  Farmer: COLORS.primary, Veterinarian: '#1565c0',
+  Supplier: '#e65100',    Retailer: '#6a1b9a',
+};
+
+// ── Tab icon: pill highlight on active, clean spacing ──────────────────────
+const TabIcon = ({ emoji, label, focused, roleColor }) => (
+  <View style={styles.tabIconWrap}>
+    <View style={[styles.tabPill, focused && { backgroundColor: roleColor + '1a' }]}>
+      <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>{emoji}</Text>
+    </View>
+    <Text style={[styles.tabLabel, { color: focused ? roleColor : '#aaa' }]}>{label}</Text>
+    {focused && <View style={[styles.tabDot, { backgroundColor: roleColor }]} />}
   </View>
 );
 
-export default function App() {
+function RoleTabNavigator({ currentUser, onLogout }) {
+  const role  = currentUser?.role || 'Farmer';
+  const tabs  = ROLE_TABS[role] || ROLE_TABS.Farmer;
+  const color = ROLE_COLORS[role] || COLORS.primary;
+
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarShowLabel: false,
-        }}
-      >
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          ...styles.tabBar,
+          borderTopColor: color + '25',
+        },
+        tabBarShowLabel: false,
+        tabBarHideOnKeyboard: true,
+      }}
+    >
+      {tabs.map(t => (
         <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🏠" label="Home"    focused={focused} /> }}
-        />
-        <Tab.Screen
-          name="Herd"
-          component={HerdScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🐄" label="Herd"    focused={focused} /> }}
-        />
-        <Tab.Screen
-          name="Market"
-          component={MarketplaceScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🛒" label="Market"  focused={focused} /> }}
-        />
-        <Tab.Screen
-          name="Feed"
-          component={FeedAnalyzerScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="🌾" label="Feed"    focused={focused} /> }}
-        />
-        <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} /> }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+          key={t.name}
+          name={t.name}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji={t.emoji} label={t.label} focused={focused} roleColor={color} />
+            ),
+          }}
+        >
+          {props => <t.screen {...props} currentUser={currentUser} onLogout={onLogout} />}
+        </Tab.Screen>
+      ))}
+    </Tab.Navigator>
+  );
+}
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  if (!currentUser) {
+    return (
+      <SafeAreaProvider>
+        <LoginScreen onLogin={setCurrentUser} />
+      </SafeAreaProvider>
+    );
+  }
+
+  return (
+    <SafeAreaProvider>
+      {/* Wrap in a relative View so the FAB can be absolutely positioned above the tab bar */}
+      <View style={{ flex: 1 }}>
+        <NavigationContainer>
+          <RoleTabNavigator
+            currentUser={currentUser}
+            onLogout={() => setCurrentUser(null)}
+          />
+        </NavigationContainer>
+        <JindaRaMamboFAB currentUser={currentUser} />
+      </View>
+    </SafeAreaProvider>
   );
 }
 
@@ -63,26 +131,49 @@ const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e8f5e9',
-    height: 70,
-    paddingBottom: 8,
-    paddingTop: 6,
-    elevation: 12,
-    shadowColor: '#1b5e20',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    height: 76,
+    paddingBottom: 0,
+    paddingTop: 0,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
   },
-  tabIcon: {
+
+  // Each tab column
+  tabIconWrap: {
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
+    justifyContent: 'center',
+    paddingTop: 6,
+    width: 64,
   },
-  tabIconActive: {
-    backgroundColor: '#e8f5e9',
-    paddingHorizontal: 12,
+
+  // Pill behind the emoji when focused
+  tabPill: {
+    width: 48,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 3,
   },
-  tabEmoji:  { fontSize: 20 },
-  tabLabel:  { fontSize: 10, fontWeight: '700', marginTop: 2 },
+
+  tabEmoji:       { fontSize: 20 },
+  tabEmojiActive: { fontSize: 22 },
+
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+    marginBottom: 2,
+  },
+
+  // Tiny active dot below the label
+  tabDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    marginTop: 1,
+  },
 });

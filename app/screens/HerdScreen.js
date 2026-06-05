@@ -79,7 +79,7 @@ export default function HerdScreen() {
       {loading ? <ActivityIndicator color={COLORS.primary} style={{ margin: 20 }} /> : null}
 
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.primary} />}
       >
         {filtered.length === 0 ? (
@@ -112,11 +112,11 @@ export default function HerdScreen() {
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.saleBtnText, a.for_sale && styles.saleBtnTextActive]}>
-                    {a.for_sale ? '🏷 Listed for Sale' : 'List for Sale'}
+                    {a.for_sale ? 'Listed for Sale' : 'List for Sale'}
                   </Text>
                 </TouchableOpacity>
                 <View style={styles.passportBtn}>
-                  <Text style={styles.passportText}>🛡 Passport</Text>
+                  <Text style={styles.passportText}>Passport</Text>
                 </View>
               </View>
             </View>

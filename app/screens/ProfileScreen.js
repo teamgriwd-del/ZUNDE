@@ -15,17 +15,24 @@ const MenuItem = ({ emoji, label, desc, color, onPress }) => (
   </TouchableOpacity>
 );
 
-export default function ProfileScreen({ navigation }) {
+const ROLE_EMOJI  = { Farmer: '🌾', Veterinarian: '🩺', Supplier: '💊', Retailer: '🏪' };
+const ROLE_COLOR  = { Farmer: COLORS.primary, Veterinarian: '#1e293b', Supplier: '#ea580c', Retailer: '#6d28d9' };
+
+export default function ProfileScreen({ navigation, currentUser, onLogout }) {
+  const role      = currentUser?.role || 'Farmer';
+  const headerBg  = ROLE_COLOR[role]  || COLORS.primary;
+  const emoji     = ROLE_EMOJI[role]  || '🌾';
+
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: headerBg }]}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>🌾</Text>
+          <Text style={styles.avatarText}>{emoji}</Text>
         </View>
-        <Text style={styles.userName}>Arnold Mapindu</Text>
-        <Text style={styles.userRole}>Farmer · Mashonaland West</Text>
-        <Text style={styles.userOrg}>Mapindu Family Farm</Text>
+        <Text style={styles.userName}>{currentUser?.name || 'User'}</Text>
+        <Text style={styles.userRole}>{role} · {currentUser?.province || 'Zimbabwe'}</Text>
+        {currentUser?.org ? <Text style={styles.userOrg}>{currentUser.org}</Text> : null}
         <View style={styles.userStats}>
           <View style={styles.userStat}><Text style={styles.userStatVal}>2</Text><Text style={styles.userStatLabel}>Animals</Text></View>
           <View style={styles.statDivider} />
@@ -68,6 +75,21 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
       </View>
+
+      {/* Sign out */}
+      {onLogout && (
+        <View style={[styles.section, { marginTop: 8 }]}>
+          <TouchableOpacity
+            style={[styles.menuCard, { backgroundColor: '#fff5f5', borderWidth: 1.5, borderColor: '#fca5a5', padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }]}
+            onPress={onLogout}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 22 }}>🚪</Text>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: '#dc2626', flex: 1 }}>Sign Out</Text>
+            <Text style={{ color: '#fca5a5', fontSize: 18 }}>›</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* About */}
       <View style={[styles.section, { marginBottom: 40 }]}>
