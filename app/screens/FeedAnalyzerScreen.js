@@ -19,7 +19,13 @@ const DEMO_FEEDS = [
 const CAT_COLOR = { protein:'#1565c0', energy:'#e65100', roughage:'#2e7d32', mineral:'#6a1b9a', mixed:'#555' };
 const CAT_BG    = { protein:'#e3f2fd', energy:'#fff3e0', roughage:'#e8f5e9', mineral:'#f3e5f5', mixed:'#f5f5f5' };
 
-const SPECIES = ['All', 'Cattle', 'Goat', 'Sheep', 'Pig'];
+const SPECIES = [
+  { key: 'All',    label: 'All Animals', color: '#1b5e20', bg: '#e8f5e9' },
+  { key: 'Cattle', label: 'Cattle',      color: '#795548', bg: '#efebe9' },
+  { key: 'Goat',   label: 'Goat',        color: '#6a1b9a', bg: '#f3e5f5' },
+  { key: 'Sheep',  label: 'Sheep',       color: '#1565c0', bg: '#e3f2fd' },
+  { key: 'Pig',    label: 'Pig',         color: '#c62828', bg: '#ffebee' },
+];
 
 // value = numeric, display = formatted string shown to user
 const NutrientBar = ({ label, value, display, max, color }) => (
@@ -58,6 +64,8 @@ export default function FeedAnalyzerScreen() {
     const matchSpecies = species === 'All' || (f.suitable_for || '').includes(species);
     return matchSearch && matchSpecies;
   });
+
+  const activeSpecies = SPECIES.find(s => s.key === species) || SPECIES[0];
 
   const renderItem = ({ item }) => {
     const isOpen = expandedId === item.id;
@@ -131,18 +139,31 @@ export default function FeedAnalyzerScreen() {
         <TextInput style={styles.searchInput} placeholder="Search feeds (e.g. Maize, Soya)..." value={search} onChangeText={setSearch} placeholderTextColor="#aaa" />
       </View>
 
-      {/* Species filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-        {SPECIES.map(s => (
-          <TouchableOpacity key={s} activeOpacity={0.8}
-            style={[styles.filterChip, species === s && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
-            onPress={() => setSpecies(s)}>
-            <Text style={[styles.filterChipText, species === s && { color: '#fff' }]}>
-              {s === 'All' ? '🐾 All' : s === 'Cattle' ? '🐄 ' + s : s === 'Goat' ? '🐐 ' + s : s === 'Sheep' ? '🐑 ' + s : '🐖 ' + s}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Species filter — always fully visible, colour-coded per animal */}
+      <View style={styles.filterSection}>
+        <Text style={styles.filterLabel}>Filter by Animal</Text>
+        <View style={styles.filterGrid}>
+          {SPECIES.map(s => {
+            const active = species === s.key;
+            return (
+              <TouchableOpacity
+                key={s.key}
+                activeOpacity={0.8}
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: active ? s.color : s.bg, borderColor: s.color },
+                ]}
+                onPress={() => setSpecies(s.key)}
+              >
+                <Text style={[styles.filterChipText, { color: active ? '#fff' : s.color }]}>
+                  {s.label}
+                </Text>
+                {active && <View style={styles.filterActiveDot} />}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
       {loading ? <ActivityIndicator color={COLORS.primary} style={{ margin: 12 }} /> : null}
 
@@ -153,7 +174,7 @@ export default function FeedAnalyzerScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 110 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={COLORS.primary} />}
         ListHeaderComponent={
-          <Text style={styles.resultCount}>{filtered.length} feed type{filtered.length !== 1 ? 's' : ''}{species !== 'All' ? ` for ${species}` : ''}</Text>
+          <Text style={styles.resultCount}>{filtered.length} feed type{filtered.length !== 1 ? 's' : ''}{species !== 'All' ? ` for ${activeSpecies.label}` : ''}</Text>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -175,10 +196,12 @@ const styles = StyleSheet.create({
   infoText:      { fontSize: 12, color: COLORS.primary, fontWeight: '600', lineHeight: 18 },
   searchBox:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', margin: 16, marginBottom: 8, borderRadius: 14, paddingHorizontal: 14, elevation: 2 },
   searchInput:   { flex: 1, paddingVertical: 12, fontSize: 14, color: COLORS.text },
-  filterScroll:  { flexGrow: 0 },
-  filterContent: { paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
-  filterChip:    { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: '#e0e0e0', backgroundColor: '#fff' },
-  filterChipText:{ fontSize: 12, fontWeight: '700', color: COLORS.text },
+  filterSection:    { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  filterLabel:      { fontSize: 9, fontWeight: '800', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  filterGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  filterChip:       { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 22, borderWidth: 2 },
+  filterChipText:   { fontSize: 12, fontWeight: '800' },
+  filterActiveDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   resultCount:   { fontSize: 11, color: COLORS.muted, fontWeight: '700', textTransform: 'uppercase', marginBottom: 10, letterSpacing: 0.5 },
   card:          { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 2 },
   cardTop:       { flexDirection: 'row', alignItems: 'center', gap: 12 },
