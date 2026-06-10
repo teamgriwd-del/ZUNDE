@@ -3,6 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  Home, Users, ShoppingCart, Wheat, Wifi, MessageSquare,
+  User, ClipboardList, Package, Store,
+} from 'lucide-react-native';
 import { COLORS } from './config';
 
 import LoginScreen        from './screens/LoginScreen';
@@ -19,34 +23,35 @@ const Tab = createBottomTabNavigator();
 
 const ROLE_TABS = {
   Farmer: [
-    { name: 'Dashboard', emoji: '🏠', label: 'Home',    screen: DashboardScreen },
-    { name: 'Herd',      emoji: '🐄', label: 'Herd',    screen: HerdScreen },
-    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
-    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
-    { name: 'IoT',       emoji: '📡', label: 'IoT',     screen: IoTScreen },
-    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+    { name: 'Dashboard', icon: Home,          label: 'Home',    screen: DashboardScreen },
+    { name: 'Herd',      icon: Users,         label: 'Herd',    screen: HerdScreen },
+    { name: 'Market',    icon: ShoppingCart,  label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      icon: Wheat,         label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'IoT',       icon: Wifi,          label: 'IoT',     screen: IoTScreen },
+    { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
+    { name: 'Profile',   icon: User,          label: 'More',    screen: ProfileScreen },
   ],
   Veterinarian: [
-    { name: 'Dashboard', emoji: '📋', label: 'Home',    screen: DashboardScreen },
-    { name: 'Herd',      emoji: '🐄', label: 'Animals', screen: HerdScreen },
-    { name: 'IoT',       emoji: '📡', label: 'IoT',     screen: IoTScreen },
-    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
-    { name: 'Vet',       emoji: '💬', label: 'Cases',   screen: VetMessengerScreen },
-    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+    { name: 'Dashboard', icon: ClipboardList, label: 'Home',    screen: DashboardScreen },
+    { name: 'Herd',      icon: Users,         label: 'Animals', screen: HerdScreen },
+    { name: 'IoT',       icon: Wifi,          label: 'IoT',     screen: IoTScreen },
+    { name: 'Market',    icon: ShoppingCart,  label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
+    { name: 'Profile',   icon: User,          label: 'More',    screen: ProfileScreen },
   ],
   Supplier: [
-    { name: 'Dashboard', emoji: '📦', label: 'Home',    screen: DashboardScreen },
-    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
-    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
-    { name: 'Vet',       emoji: '💬', label: 'Comms',   screen: VetMessengerScreen },
-    { name: 'Profile',   emoji: '👤', label: 'More',    screen: ProfileScreen },
+    { name: 'Dashboard', icon: Package,       label: 'Home',    screen: DashboardScreen },
+    { name: 'Market',    icon: ShoppingCart,  label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      icon: Wheat,         label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
+    { name: 'Profile',   icon: User,          label: 'More',    screen: ProfileScreen },
   ],
   Retailer: [
-    { name: 'Dashboard', emoji: '🏪', label: 'Home',    screen: DashboardScreen },
-    { name: 'Market',    emoji: '🛒', label: 'Market',  screen: MarketplaceScreen },
-    { name: 'Feed',      emoji: '🌾', label: 'Feed',    screen: FeedAnalyzerScreen },
-    { name: 'Vet',       emoji: '💬', label: 'Contact', screen: VetMessengerScreen },
-    { name: 'Profile',   emoji: '👤', label: 'Profile', screen: ProfileScreen },
+    { name: 'Dashboard', icon: Store,         label: 'Home',    screen: DashboardScreen },
+    { name: 'Market',    icon: ShoppingCart,  label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Feed',      icon: Wheat,         label: 'Feed',    screen: FeedAnalyzerScreen },
+    { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
+    { name: 'Profile',   icon: User,          label: 'Profile', screen: ProfileScreen },
   ],
 };
 
@@ -56,10 +61,10 @@ const ROLE_COLORS = {
 };
 
 // ── Tab icon: pill highlight on active, clean spacing ──────────────────────
-const TabIcon = ({ emoji, label, focused, roleColor }) => (
+const TabIcon = ({ icon: Icon, label, focused, roleColor }) => (
   <View style={styles.tabIconWrap}>
     <View style={[styles.tabPill, focused && { backgroundColor: roleColor + '1a' }]}>
-      <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>{emoji}</Text>
+      <Icon size={focused ? 21 : 19} color={focused ? roleColor : '#9aa0a6'} strokeWidth={focused ? 2.4 : 2} />
     </View>
     <Text style={[styles.tabLabel, { color: focused ? roleColor : '#aaa' }]}>{label}</Text>
     {focused && <View style={[styles.tabDot, { backgroundColor: roleColor }]} />}
@@ -89,7 +94,7 @@ function RoleTabNavigator({ currentUser, onLogout }) {
           name={t.name}
           options={{
             tabBarIcon: ({ focused }) => (
-              <TabIcon emoji={t.emoji} label={t.label} focused={focused} roleColor={color} />
+              <TabIcon icon={t.icon} label={t.label} focused={focused} roleColor={color} />
             ),
           }}
         >
@@ -146,21 +151,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 6,
-    width: 64,
+    width: 50,
   },
 
-  // Pill behind the emoji when focused
+  // Pill behind the icon when focused
   tabPill: {
-    width: 48,
+    width: 40,
     height: 32,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 3,
   },
-
-  tabEmoji:       { fontSize: 20 },
-  tabEmojiActive: { fontSize: 22 },
 
   tabLabel: {
     fontSize: 10,

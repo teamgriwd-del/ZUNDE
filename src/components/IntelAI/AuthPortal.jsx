@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import {
-  User, ShieldCheck, ShoppingBag, Truck, ArrowRight, ArrowLeft,
-  Phone, Mail, MapPin, Building2, Tag, CheckCircle, Stethoscope,
-  Package, ChevronDown
+  Sprout, ShoppingBag, Truck, ArrowRight, ArrowLeft,
+  Phone, Mail, MapPin, Building2, CheckCircle, Stethoscope,
 } from 'lucide-react';
 
 // ── data ───────────────────────────────────────────────────────────────────
 const ROLES = [
   {
     name: 'Farmer',
-    icon: User,
+    icon: Sprout,
     color: 'bg-zunde-green',
     border: 'border-zunde-green',
     desc: 'Register your herd, track health, sell livestock and order medicines.',
-    emoji: '🌾'
   },
   {
     name: 'Veterinarian',
@@ -21,7 +19,6 @@ const ROLES = [
     color: 'bg-blue-600',
     border: 'border-blue-500',
     desc: 'Issue health certificates, manage outbreaks and consult farmers.',
-    emoji: '🩺'
   },
   {
     name: 'Supplier',
@@ -29,7 +26,6 @@ const ROLES = [
     color: 'bg-orange-500',
     border: 'border-orange-500',
     desc: 'Supply vaccines, medicines and feed to registered farms.',
-    emoji: '💊'
   },
   {
     name: 'Retailer',
@@ -37,7 +33,6 @@ const ROLES = [
     color: 'bg-purple-600',
     border: 'border-purple-600',
     desc: 'Browse certified livestock listings and acquire trade certificates.',
-    emoji: '🏪'
   },
 ];
 
@@ -347,7 +342,7 @@ const AuthPortal = ({ onLogin }) => {
         <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
           {/* Role badge */}
           <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black text-white ${role.color}`}>
-            {role.emoji} {form.role}
+            <role.icon size={13} /> {form.role}
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
@@ -414,7 +409,9 @@ const AuthPortal = ({ onLogin }) => {
           <div className="relative z-10 space-y-2">
             {ROLES.map(r => (
               <div key={r.name} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${form.role === r.name && !isReturning ? 'bg-white/20 border border-white/30' : 'opacity-40'}`}>
-                <span className="text-lg">{r.emoji}</span>
+                <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+                  <r.icon size={15} className="text-white" />
+                </div>
                 <div>
                   <p className="text-xs font-black text-white leading-none">{r.name}</p>
                   <p className="text-[9px] text-green-200 font-medium leading-none mt-0.5">{r.desc.split('.')[0]}</p>
@@ -442,9 +439,9 @@ const AuthPortal = ({ onLogin }) => {
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${loginRole === r.name ? r.color : 'bg-gray-100'}`}>
                         <r.icon size={16} className={loginRole === r.name ? 'text-white' : 'text-gray-400'} />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs font-black text-gray-800">{r.name}</p>
-                        <p className="text-[9px] text-gray-400 font-medium">{r.emoji}</p>
+                        <p className="text-[9px] text-gray-400 font-medium truncate">{r.desc.split('.')[0]}</p>
                       </div>
                     </button>
                   ))}
