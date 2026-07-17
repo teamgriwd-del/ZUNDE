@@ -12,7 +12,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ZUNDE] Component error:', error, info.componentStack);
+    console.error('[PFUMA] Component error:', error, info.componentStack);
   }
 
   render() {
@@ -34,7 +34,7 @@ class ErrorBoundary extends React.Component {
           )}
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="flex items-center justify-center space-x-2 w-full py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition shadow-lg shadow-green-900/20"
+            className="flex items-center justify-center space-x-2 w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:scale-105 transition shadow-lg shadow-green-900/20"
           >
             <RefreshCw size={16} />
             <span>Retry Module</span>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import DiseaseDetection  from './components/DiseaseDetection/DiseaseDetection';
 import AnimalProfile     from './components/AnimalProfile/AnimalProfile';
 import HealthManagement  from './components/HealthManagement/HealthManagement';
@@ -6,7 +6,7 @@ import VetCommunication  from './components/VetCommunication/VetCommunication';
 import HardwareSimulation from './components/HardwareSimulation/HardwareSimulation';
 import Marketplace       from './components/Marketplace/Marketplace';
 import FeedAnalyzer      from './components/FeedAnalyzer/FeedAnalyzer';
-import JindaRaMambo      from './components/IntelAI/ZundeIntelAI';
+import Jinda      from './components/IntelAI/PfumaIntelAI';
 import AuthPortal        from './components/IntelAI/AuthPortal';
 import ErrorBoundary     from './components/ErrorBoundary';
 import { HEALTH_PROTOCOLS } from './components/HealthManagement/healthData';
@@ -16,10 +16,12 @@ import {
   Truck, BarChart3, Globe, AlertTriangle, CheckCircle, ChevronRight,
   Zap, Clock, ArrowRight, Tag, Pill, Wifi, MapPin, FileText,
   RefreshCw, DollarSign, Target, Box, PhoneCall, Star, Wheat, Store,
-  Sprout, Check, Syringe
+  Sprout, Check, Syringe, Shield
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import './App.css';
+
+const API = 'http://localhost:5000';
 
 // ── seed data ──────────────────────────────────────────────────────────────
 const INITIAL_ANIMALS = [
@@ -75,16 +77,16 @@ const greet = () => {
 const StakeholderMap = () => (
   <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
     <div className="flex items-center gap-2 mb-1">
-      <Globe size={15} className="text-zunde-green" />
-      <h3 className="text-sm font-black text-gray-800">How ZUNDE Connects Everyone</h3>
+      <Globe size={15} className="text-pfuma-green" />
+      <h3 className="text-sm font-black text-gray-800">How PFUMA Connects Everyone</h3>
     </div>
     <p className="text-[11px] text-gray-400 font-medium mb-5">
-      ZUNDE is a four-stakeholder ecosystem. Every role plays a specific part — here's how they all connect.
+      PFUMA is a four-stakeholder ecosystem. Every role plays a specific part — here's how they all connect.
     </p>
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       {[
         { icon: Sprout,      role: 'Farmer',      color: 'bg-green-50 border-green-200',   text: 'text-green-800',  desc: 'Registers animals, tracks health, orders medicines, and lists livestock for sale.' },
-        { icon: Pill,        role: 'Supplier',     color: 'bg-orange-50 border-orange-200', text: 'text-orange-800', desc: 'Distributes vaccines, medicines, and feed to farmers. Receives orders through ZUNDE.' },
+        { icon: Pill,        role: 'Supplier',     color: 'bg-orange-50 border-orange-200', text: 'text-orange-800', desc: 'Distributes vaccines, medicines, and feed to farmers. Receives orders through PFUMA.' },
         { icon: Store,       role: 'Retailer',     color: 'bg-purple-50 border-purple-200', text: 'text-purple-800', desc: 'Browses certified livestock listed by farmers, places bids, and receives DVS trade certificates.' },
         { icon: Stethoscope, role: 'Veterinarian', color: 'bg-blue-50 border-blue-200',     text: 'text-blue-800',   desc: 'Certifies animal health, issues movement permits, and manages regional disease outbreaks.' },
       ].map(r => (
@@ -136,7 +138,7 @@ const KpiCard = ({ label, value, sub, accent = 'bg-white border-gray-100', textC
 const QuickAction = ({ icon: Icon, label, desc, color, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center gap-4 w-full p-4 bg-white rounded-2xl border-2 border-gray-100 hover:border-zunde-green hover:shadow-md transition group text-left"
+    className="flex items-center gap-4 w-full p-4 bg-white rounded-2xl border-2 border-gray-100 hover:border-pfuma-green hover:shadow-md transition group text-left"
   >
     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
       <Icon size={18} className="text-white" />
@@ -145,7 +147,7 @@ const QuickAction = ({ icon: Icon, label, desc, color, onClick }) => (
       <p className="text-xs font-black text-gray-800">{label}</p>
       <p className="text-[10px] text-gray-400 font-medium truncate">{desc}</p>
     </div>
-    <ArrowRight size={14} className="text-gray-300 group-hover:text-zunde-green transition shrink-0" />
+    <ArrowRight size={14} className="text-gray-300 group-hover:text-pfuma-green transition shrink-0" />
   </button>
 );
 
@@ -196,10 +198,10 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
   const recentLogs = auditLog.slice(0, 4);
 
   return (
-    <div className="p-6 bg-zunde-cream space-y-6 text-left overflow-y-auto h-full">
+    <div className="p-6 bg-pfuma-cream space-y-6 text-left overflow-y-auto h-full">
 
       {/* Greeting banner */}
-      <div className="bg-zunde-green rounded-3xl p-6 relative overflow-hidden">
+      <div className="bg-pfuma-green rounded-3xl p-6 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1">
@@ -218,20 +220,20 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
         </div>
       </div>
 
-      {/* Your Role on ZUNDE */}
+      {/* Your Role on PFUMA */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <p className="text-[10px] font-black text-zunde-green uppercase tracking-widest mb-1.5">Your Role on ZUNDE</p>
+        <p className="text-[10px] font-black text-pfuma-green uppercase tracking-widest mb-1.5">Your Role on PFUMA</p>
         <h3 className="text-sm font-black text-gray-900 mb-2">You are the heart of the herd</h3>
         <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-4">
           Register your animals, track their health, and reorder medicine before stocks run low. When ready, list animals on the Marketplace — a DVS vet certifies them so retailers across Zimbabwe can bid with confidence.
         </p>
-        <div className="flex items-center gap-2 flex-wrap bg-green-50 rounded-xl px-3 py-2.5 text-[11px] font-bold text-zunde-green">
+        <div className="flex items-center gap-2 flex-wrap bg-green-50 rounded-xl px-3 py-2.5 text-[11px] font-bold text-pfuma-green">
           <Sprout size={15} />
           <span>You raise & register</span>
-          <ArrowRight size={12} className="text-zunde-green/50" />
+          <ArrowRight size={12} className="text-pfuma-green/50" />
           <Stethoscope size={15} />
           <span>Vet certifies health</span>
-          <ArrowRight size={12} className="text-zunde-green/50" />
+          <ArrowRight size={12} className="text-pfuma-green/50" />
           <Store size={15} />
           <span>Retailer buys</span>
         </div>
@@ -239,8 +241,8 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total Animals"    value={animals.length}            sub="In your herd registry"                icon={Tag}         iconColor="text-zunde-green"  onClick={() => setActiveTab('profile')} />
-        <KpiCard label="Herd Value"       value={`$${totalValue.toLocaleString()}`} sub="Estimated market value"       icon={DollarSign}  iconColor="text-zunde-gold"   accent="bg-zunde-gold/5 border-zunde-gold/20" />
+        <KpiCard label="Total Animals"    value={animals.length}            sub="In your herd registry"                icon={Tag}         iconColor="text-pfuma-green"  onClick={() => setActiveTab('profile')} />
+        <KpiCard label="Herd Value"       value={`$${totalValue.toLocaleString()}`} sub="Estimated market value"       icon={DollarSign}  iconColor="text-pfuma-gold"   accent="bg-pfuma-gold/5 border-pfuma-gold/20" />
         <KpiCard label="Overdue Vaccines" value={overdueVaccines.length}    sub={overdueVaccines.length ? 'Need immediate attention' : 'All vaccinations current'} icon={ShieldCheck} iconColor={overdueVaccines.length ? 'text-red-500' : 'text-green-500'} accent={overdueVaccines.length ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'} textColor={overdueVaccines.length ? 'text-red-600' : 'text-gray-900'} onClick={() => setActiveTab('health')} />
         <KpiCard label="Listed for Sale"  value={forSale}                   sub={forSale ? 'Visible on marketplace' : 'None listed yet'} icon={ShoppingCart} iconColor="text-purple-500" onClick={() => setActiveTab('profile')} />
       </div>
@@ -261,7 +263,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
             </div>
             {priorityRows.length === 0 ? (
               <div className="flex flex-col items-center py-6 text-center">
-                <CheckCircle size={28} className="text-zunde-green mb-2" />
+                <CheckCircle size={28} className="text-pfuma-green mb-2" />
                 <p className="text-xs font-black text-gray-500">All good — no urgent actions</p>
                 <p className="text-[10px] text-gray-400 font-medium mt-1">Your farm is running smoothly</p>
               </div>
@@ -290,7 +292,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <h3 className="text-sm font-black text-gray-800 mb-3">Quick Navigation</h3>
             <div className="space-y-2">
-              <QuickAction icon={Users}       label="Herd Registry"  desc="View & manage your animals"    color="bg-zunde-green"  onClick={() => setActiveTab('profile')} />
+              <QuickAction icon={Users}       label="Herd Registry"  desc="View & manage your animals"    color="bg-pfuma-green"  onClick={() => setActiveTab('profile')} />
               <QuickAction icon={HeartPulse}  label="Lifecycle"      desc="Vaccines & health protocols"   color="bg-blue-500"    onClick={() => setActiveTab('health')} />
               <QuickAction icon={Stethoscope} label="Diagnostics"    desc="AI disease checker"            color="bg-purple-500"  onClick={() => setActiveTab('disease')} />
               <QuickAction icon={MessageSquare} label="Messenger"     desc="Chat with vets, suppliers & farmers" color="bg-teal-500" onClick={() => setActiveTab('vet')} />
@@ -308,14 +310,14 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
               <h3 className="text-sm font-black text-gray-800">Sell Your Animals</h3>
             </div>
             <p className="text-[11px] text-gray-400 font-medium mb-4 leading-snug">
-              Toggle any animal below to list it on the ZUNDE Marketplace. Retailers and livestock buyers will immediately see it and can place a bid. You control the listing — remove it any time.
+              Toggle any animal below to list it on the PFUMA Marketplace. Retailers and livestock buyers will immediately see it and can place a bid. You control the listing — remove it any time.
             </p>
 
             {animals.length === 0 ? (
               <div className="text-center py-6 border-2 border-dashed border-gray-200 rounded-xl">
                 <span className="text-4xl">🐄</span>
                 <p className="text-xs text-gray-400 font-medium mt-2">No animals registered yet</p>
-                <button onClick={() => setActiveTab('profile')} className="mt-3 px-4 py-2 bg-zunde-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Register an Animal</button>
+                <button onClick={() => setActiveTab('profile')} className="mt-3 px-4 py-2 bg-pfuma-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Register an Animal</button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -336,7 +338,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
                       className={`shrink-0 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wide transition ${
                         a.forSale
                           ? 'bg-yellow-400 text-gray-900 hover:bg-yellow-500'
-                          : 'bg-zunde-green text-white hover:bg-green-700'
+                          : 'bg-pfuma-green text-white hover:bg-green-700'
                       }`}
                     >
                       {a.forSale ? 'Unlist' : 'List for Sale'}
@@ -351,7 +353,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
               <div className="mt-4 bg-purple-50 border border-purple-200 rounded-xl p-3">
                 <p className="text-[10px] font-black text-purple-700 uppercase mb-1">What happens next</p>
                 <div className="space-y-1">
-                  {['Retailers browse your listing on the Marketplace', 'A retailer places a bid — you receive it via ZUNDE Messenger', 'Vet issues a DVS movement certificate for the sale'].map((s, i) => (
+                  {['Retailers browse your listing on the Marketplace', 'A retailer places a bid — you receive it via PFUMA Messenger', 'Vet issues a DVS movement certificate for the sale'].map((s, i) => (
                     <div key={i} className="flex items-start gap-2 text-[10px] text-purple-600 font-medium">
                       <span className="w-4 h-4 bg-purple-200 text-purple-700 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 mt-0.5">{i + 1}</span>
                       {s}
@@ -365,7 +367,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           {/* Herd Value Trend */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp size={15} className="text-zunde-green" />
+              <TrendingUp size={15} className="text-pfuma-green" />
               <h3 className="text-sm font-black text-gray-800">Herd Value Trend</h3>
             </div>
             <p className="text-[11px] text-gray-400 font-medium mb-3">Estimated total herd value over the last 6 months</p>
@@ -385,9 +387,9 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <div className="flex justify-between items-center mb-1">
               <h3 className="text-sm font-black text-gray-800">Medicine Cabinet</h3>
-              <button onClick={() => setActiveTab('health')} className="text-[10px] font-black text-zunde-green hover:underline uppercase">Manage →</button>
+              <button onClick={() => setActiveTab('health')} className="text-[10px] font-black text-pfuma-green hover:underline uppercase">Manage →</button>
             </div>
-            <p className="text-[11px] text-gray-400 font-medium mb-4">Your current medicine stock. Medicines are supplied by registered ZUNDE Suppliers — contact them via ZUNDE Messenger.</p>
+            <p className="text-[11px] text-gray-400 font-medium mb-4">Your current medicine stock. Medicines are supplied by registered PFUMA Suppliers — contact them via PFUMA Messenger.</p>
             <div className="space-y-3">
               {inventory.map(item => {
                 const isLow = item.stock <= item.min;
@@ -403,7 +405,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
                       <span className="text-gray-300">from {item.supplier}</span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${isLow ? 'bg-red-500' : pct > 50 ? 'bg-zunde-green' : 'bg-orange-400'}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-full rounded-full ${isLow ? 'bg-red-500' : pct > 50 ? 'bg-pfuma-green' : 'bg-orange-400'}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
@@ -433,7 +435,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
                   </div>
                 </div>
               ))}
-              <button onClick={() => setActiveTab('disease')} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-gray-50 rounded-xl text-[11px] font-black text-gray-500 uppercase hover:bg-gray-100 hover:text-zunde-green transition">
+              <button onClick={() => setActiveTab('disease')} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-gray-50 rounded-xl text-[11px] font-black text-gray-500 uppercase hover:bg-gray-100 hover:text-pfuma-green transition">
                 <Stethoscope size={12} /> Run Diagnostics
               </button>
             </div>
@@ -448,7 +450,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
               <div className="space-y-2.5">
                 {recentLogs.map(log => (
                   <div key={log.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-1.5 h-1.5 rounded-full bg-zunde-green mt-1.5 shrink-0" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-pfuma-green mt-1.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-black text-gray-800 truncate">{log.action}</p>
                       <p className="text-[10px] text-gray-400 font-medium">{log.animal} · {log.date}</p>
@@ -486,10 +488,10 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
           {/* Farmers Near You */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
-              <Users size={15} className="text-zunde-green" />
+              <Users size={15} className="text-pfuma-green" />
               <h3 className="text-sm font-black text-gray-800">Farmers Near You</h3>
             </div>
-            <p className="text-[11px] text-gray-400 font-medium mb-4">Connect with other ZUNDE farmers to swap tips, feed, or breeding stock.</p>
+            <p className="text-[11px] text-gray-400 font-medium mb-4">Connect with other PFUMA farmers to swap tips, feed, or breeding stock.</p>
             <div className="space-y-2">
               {NEARBY_FARMERS.map(f => (
                 <div key={f.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
@@ -501,7 +503,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
                     <p className="text-[11px] font-black text-gray-800 truncate">{f.name}</p>
                     <p className="text-[10px] text-gray-400 font-medium truncate">{f.role} · {f.province}</p>
                   </div>
-                  <button onClick={() => setActiveTab('vet')} className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-zunde-green hover:bg-green-50 transition shrink-0" aria-label={`Message ${f.name}`}>
+                  <button onClick={() => setActiveTab('vet')} className="w-8 h-8 bg-white border border-gray-200 rounded-full flex items-center justify-center text-pfuma-green hover:bg-green-50 transition shrink-0" aria-label={`Message ${f.name}`}>
                     <MessageSquare size={13} />
                   </button>
                 </div>
@@ -537,10 +539,10 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
   ];
 
   return (
-    <div className="p-6 bg-zunde-slate space-y-6 text-left overflow-y-auto h-full">
+    <div className="p-6 bg-pfuma-slate space-y-6 text-left overflow-y-auto h-full">
 
       {/* Greeting */}
-      <div className="bg-zunde-green/20 border border-zunde-green/30 rounded-3xl p-6 relative overflow-hidden">
+      <div className="bg-pfuma-green/20 border border-pfuma-green/30 rounded-3xl p-6 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1">
             <p className="text-green-400 text-xs font-black uppercase tracking-[3px] mb-1">Authority Dashboard · {currentUser?.province || 'Mashonaland West'}</p>
@@ -560,7 +562,7 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
           { label: 'Active Outbreaks',  value: '1',   sub: 'FMD — Chegutu District',          icon: AlertTriangle, iconColor: 'text-red-500',   accent: 'bg-red-500/10 border-red-500/20',   textColor: 'text-red-400' },
           { label: 'Cert. Queue',       value: '12',  sub: 'Awaiting your sign-off',           icon: FileText,      iconColor: 'text-yellow-400', accent: 'bg-white/5 border-white/10',       textColor: 'text-white'   },
           { label: 'Farms Under Watch', value: '4',   sub: 'Mashonaland West registry',        icon: MapPin,        iconColor: 'text-blue-400',   accent: 'bg-white/5 border-white/10',       textColor: 'text-white'   },
-          { label: 'Node Sync',         value: '99%', sub: 'RaMambo mesh network online',      icon: Wifi,          iconColor: 'text-green-400',  accent: 'bg-white/5 border-white/10',       textColor: 'text-white'   },
+          { label: 'Node Sync',         value: '99%', sub: 'PFUMA mesh network online',      icon: Wifi,          iconColor: 'text-green-400',  accent: 'bg-white/5 border-white/10',       textColor: 'text-white'   },
         ].map(k => (
           <div key={k.label} className={`${k.accent} border rounded-2xl p-5`}>
             <div className="flex justify-between items-start mb-2">
@@ -607,11 +609,11 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
             <h3 className="text-sm font-black text-white mb-3">Quick Actions</h3>
             <div className="space-y-2">
               {[
-                { icon: MessageSquare, label: 'Open Vet Messenger', desc: 'Chat with farmers', tab: 'vet',     color: 'bg-zunde-green'  },
-                { icon: Stethoscope,  label: 'Run Diagnostics',    desc: 'AI disease checker', tab: 'disease', color: 'bg-zunde-gold'   },
-                { icon: ShieldCheck,  label: 'Issue Certificate',  desc: 'Sign off a case',    tab: 'vet',     color: 'bg-zunde-sprout' },
+                { icon: MessageSquare, label: 'Open Vet Messenger', desc: 'Chat with farmers', tab: 'vet',     color: 'bg-pfuma-green'  },
+                { icon: Stethoscope,  label: 'Run Diagnostics',    desc: 'AI disease checker', tab: 'disease', color: 'bg-pfuma-gold'   },
+                { icon: ShieldCheck,  label: 'Issue Certificate',  desc: 'Sign off a case',    tab: 'vet',     color: 'bg-pfuma-sprout' },
               ].map(a => (
-                <button key={a.label} onClick={() => setActiveTab(a.tab)} className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:border-zunde-green hover:bg-white/5 transition text-left">
+                <button key={a.label} onClick={() => setActiveTab(a.tab)} className="w-full flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:border-pfuma-green hover:bg-white/5 transition text-left">
                   <div className={`w-8 h-8 ${a.color} rounded-lg flex items-center justify-center shrink-0`}><a.icon size={14} className="text-white" /></div>
                   <div><p className="text-[11px] font-black text-white">{a.label}</p><p className="text-[10px] text-gray-500 font-medium">{a.desc}</p></div>
                   <ArrowRight size={12} className="text-gray-600 ml-auto" />
@@ -632,8 +634,8 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
             </div>
             <div className="space-y-3">
               {FARMS.map((farm, i) => (
-                <button key={i} onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-transparent hover:border-zunde-green transition text-left">
-                  <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-black text-zunde-green text-sm shrink-0">{farm.name[0]}</div>
+                <button key={i} onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-transparent hover:border-pfuma-green transition text-left">
+                  <div className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center font-black text-pfuma-green text-sm shrink-0">{farm.name[0]}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-black text-white">{farm.name}</p>
@@ -642,8 +644,8 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
                     <p className="text-[10px] text-gray-500 font-medium">{farm.province} · {farm.animals} animals</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase ${farm.status === 'Verified' ? 'bg-zunde-green/20 text-green-400' : 'bg-orange-400/20 text-orange-400'}`}>{farm.status}</span>
-                    <MessageSquare size={14} className="text-gray-500 hover:text-zunde-green transition" />
+                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase ${farm.status === 'Verified' ? 'bg-pfuma-green/20 text-green-400' : 'bg-orange-400/20 text-orange-400'}`}>{farm.status}</span>
+                    <MessageSquare size={14} className="text-gray-500 hover:text-pfuma-green transition" />
                   </div>
                 </button>
               ))}
@@ -653,10 +655,10 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
           {/* Provincial network health */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
             <div className="flex items-center gap-2 mb-1">
-              <Wifi size={15} className="text-zunde-sprout" />
+              <Wifi size={15} className="text-pfuma-sprout" />
               <h3 className="text-sm font-black text-white">Provincial Network Health</h3>
             </div>
-            <p className="text-[11px] text-gray-500 font-medium mb-4">RaMambo mesh node sync rate — last 7 days</p>
+            <p className="text-[11px] text-gray-500 font-medium mb-4">PFUMA mesh node sync rate — last 7 days</p>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={NETWORK_HEALTH} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
@@ -699,11 +701,11 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
   const delivered  = ORDERS.filter(o => o.status === 'Delivered').length;
 
   return (
-    <div className="p-6 bg-zunde-cream space-y-6 text-left overflow-y-auto h-full">
+    <div className="p-6 bg-pfuma-cream space-y-6 text-left overflow-y-auto h-full">
 
       {/* Role explanation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-zunde-gold rounded-3xl p-6 relative overflow-hidden">
+        <div className="bg-pfuma-gold rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
           <div className="relative z-10">
             <p className="text-amber-100 text-xs font-black uppercase tracking-[3px] mb-1">{greet()}, Supplier</p>
@@ -714,16 +716,16 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
           </div>
         </div>
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <p className="text-[10px] font-black text-zunde-gold uppercase tracking-widest mb-2">Your Role on ZUNDE</p>
+          <p className="text-[10px] font-black text-pfuma-gold uppercase tracking-widest mb-2">Your Role on PFUMA</p>
           <p className="text-sm font-black text-gray-800 mb-2">You are a veterinary medicine &amp; vaccine distributor</p>
           <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3">
-            Farmers across Zimbabwe register on ZUNDE to manage their herd health. When they run low on vaccines or medicines, they contact you through the platform. You fulfill the order and dispatch to the farm.
+            Farmers across Zimbabwe register on PFUMA to manage their herd health. When they run low on vaccines or medicines, they contact you through the platform. You fulfill the order and dispatch to the farm.
           </p>
           <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500 flex-wrap">
-            <Sprout size={16} className="text-zunde-gold shrink-0" /><span>Farmer runs low on stock</span>
-            <ArrowRight size={12} className="text-zunde-gold shrink-0" />
-            <Pill size={16} className="text-zunde-gold shrink-0" /><span>You fulfill &amp; dispatch</span>
-            <ArrowRight size={12} className="text-zunde-gold shrink-0" />
+            <Sprout size={16} className="text-pfuma-gold shrink-0" /><span>Farmer runs low on stock</span>
+            <ArrowRight size={12} className="text-pfuma-gold shrink-0" />
+            <Pill size={16} className="text-pfuma-gold shrink-0" /><span>You fulfill &amp; dispatch</span>
+            <ArrowRight size={12} className="text-pfuma-gold shrink-0" />
             <span className="text-lg">🐄</span><span>Animals stay healthy</span>
           </div>
         </div>
@@ -732,7 +734,7 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Pending Orders',   value: pending,     sub: 'Need dispatch today',              icon: Clock,       iconColor: 'text-zunde-gold', accent: pending ? 'bg-zunde-gold/10 border-zunde-gold/30' : 'bg-white border-gray-100', textColor: pending ? 'text-amber-700' : 'text-gray-900' },
+          { label: 'Pending Orders',   value: pending,     sub: 'Need dispatch today',              icon: Clock,       iconColor: 'text-pfuma-gold', accent: pending ? 'bg-pfuma-gold/10 border-pfuma-gold/30' : 'bg-white border-gray-100', textColor: pending ? 'text-amber-700' : 'text-gray-900' },
           { label: 'In Transit',       value: dispatched,  sub: 'On the way to farmers',            icon: Truck,       iconColor: 'text-blue-500',   accent: 'bg-white border-gray-100', textColor: 'text-gray-900' },
           { label: 'Delivered',        value: delivered,   sub: 'Completed this week',              icon: CheckCircle, iconColor: 'text-green-500',  accent: 'bg-white border-gray-100', textColor: 'text-gray-900' },
           { label: 'Fulfillment Rate', value: '92%',       sub: 'Monthly on-time delivery',         icon: Target,      iconColor: 'text-purple-500', accent: 'bg-white border-gray-100', textColor: 'text-gray-900' },
@@ -758,19 +760,19 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
             </div>
             <div className="space-y-3">
               {ORDERS.map(o => (
-                <div key={o.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${o.urgent && o.status === 'Pending' ? 'bg-zunde-gold/10 border-zunde-gold/30' : 'bg-gray-50 border-gray-100'}`}>
+                <div key={o.id} className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${o.urgent && o.status === 'Pending' ? 'bg-pfuma-gold/10 border-pfuma-gold/30' : 'bg-gray-50 border-gray-100'}`}>
                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                    <Package size={18} className="text-zunde-gold" />
+                    <Package size={18} className="text-pfuma-gold" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-xs font-black text-gray-800">{o.farm}</p>
-                      {o.urgent && o.status === 'Pending' && <span className="text-[9px] font-black text-amber-700 bg-zunde-gold/15 px-2 py-0.5 rounded-full uppercase">Urgent</span>}
+                      {o.urgent && o.status === 'Pending' && <span className="text-[9px] font-black text-amber-700 bg-pfuma-gold/15 px-2 py-0.5 rounded-full uppercase">Urgent</span>}
                     </div>
                     <p className="text-[10px] text-gray-500 font-medium">{o.item} · {o.qty} · Order {o.id}</p>
                   </div>
                   <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase shrink-0 ${
-                    o.status === 'Pending'    ? 'bg-zunde-gold/15 text-amber-700' :
+                    o.status === 'Pending'    ? 'bg-pfuma-gold/15 text-amber-700' :
                     o.status === 'Dispatched' ? 'bg-blue-100 text-blue-700' :
                     'bg-green-100 text-green-700'
                   }`}>{o.status}</span>
@@ -805,20 +807,20 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
           </div>
 
           {/* Demand insight */}
-          <div className="bg-zunde-slate rounded-2xl p-5 relative overflow-hidden">
-            <Truck className="absolute -bottom-4 -right-4 w-28 h-28 opacity-10 text-zunde-gold" aria-hidden="true" />
+          <div className="bg-pfuma-slate rounded-2xl p-5 relative overflow-hidden">
+            <Truck className="absolute -bottom-4 -right-4 w-28 h-28 opacity-10 text-pfuma-gold" aria-hidden="true" />
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className="text-zunde-gold" /><p className="text-[11px] font-black text-zunde-gold uppercase tracking-wide">Demand Spike</p></div>
+              <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className="text-pfuma-gold" /><p className="text-[11px] font-black text-pfuma-gold uppercase tracking-wide">Demand Spike</p></div>
               <p className="text-white text-sm font-black mb-1">Mashonaland Central</p>
               <p className="text-gray-400 text-[11px] font-medium leading-relaxed">14% increase in vaccine requirements this week. Consider pre-positioning Buparvaquone for January Disease season.</p>
             </div>
           </div>
 
           {/* Contact a farmer */}
-          <button onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-3 p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-zunde-gold transition text-left group">
-            <div className="w-10 h-10 bg-zunde-gold rounded-xl flex items-center justify-center shrink-0"><MessageSquare size={16} className="text-white" /></div>
+          <button onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-3 p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-pfuma-gold transition text-left group">
+            <div className="w-10 h-10 bg-pfuma-gold rounded-xl flex items-center justify-center shrink-0"><MessageSquare size={16} className="text-white" /></div>
             <div><p className="text-xs font-black text-gray-800">Message a Farmer</p><p className="text-[10px] text-gray-400 font-medium">Coordinate delivery or substitutions</p></div>
-            <ArrowRight size={13} className="text-gray-300 group-hover:text-zunde-gold transition ml-auto" />
+            <ArrowRight size={13} className="text-gray-300 group-hover:text-pfuma-gold transition ml-auto" />
           </button>
         </div>
       </div>
@@ -846,11 +848,11 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
   }, [listings]);
 
   return (
-    <div className="p-6 bg-zunde-cream space-y-6 text-left overflow-y-auto h-full">
+    <div className="p-6 bg-pfuma-cream space-y-6 text-left overflow-y-auto h-full">
 
       {/* Role explanation */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-zunde-plum rounded-3xl p-6 relative overflow-hidden">
+        <div className="bg-pfuma-plum rounded-3xl p-6 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #fff 0%, transparent 60%)' }} aria-hidden="true" />
           <div className="relative z-10">
             <p className="text-purple-300 text-xs font-black uppercase tracking-[3px] mb-1">{greet()}, Retailer</p>
@@ -861,19 +863,19 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
           </div>
         </div>
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <p className="text-[10px] font-black text-zunde-plum uppercase tracking-widest mb-2">Your Role on ZUNDE</p>
+          <p className="text-[10px] font-black text-pfuma-plum uppercase tracking-widest mb-2">Your Role on PFUMA</p>
           <p className="text-sm font-black text-gray-800 mb-2">You are a livestock buyer &amp; trader</p>
           <p className="text-[11px] text-gray-500 font-medium leading-relaxed mb-3">
-            Farmers list their animals for sale on ZUNDE. You browse verified listings — each animal comes with a certified Health Passport. You place a bid, the farmer accepts, and a DVS Vet issues an official movement certificate so you can legally transport the animal.
+            Farmers list their animals for sale on PFUMA. You browse verified listings — each animal comes with a certified Health Passport. You place a bid, the farmer accepts, and a DVS Vet issues an official movement certificate so you can legally transport the animal.
           </p>
           <div className="flex items-center gap-2 text-[11px] font-medium text-gray-500 flex-wrap">
-            <Sprout size={16} className="text-zunde-plum shrink-0" /><span>Farmer lists</span>
-            <ArrowRight size={12} className="text-zunde-plum shrink-0" />
-            <Store size={16} className="text-zunde-plum shrink-0" /><span>You bid</span>
-            <ArrowRight size={12} className="text-zunde-plum shrink-0" />
-            <Stethoscope size={16} className="text-zunde-plum shrink-0" /><span>Vet certifies</span>
-            <ArrowRight size={12} className="text-zunde-plum shrink-0" />
-            <CheckCircle size={16} className="text-zunde-plum shrink-0" /><span>Sale complete</span>
+            <Sprout size={16} className="text-pfuma-plum shrink-0" /><span>Farmer lists</span>
+            <ArrowRight size={12} className="text-pfuma-plum shrink-0" />
+            <Store size={16} className="text-pfuma-plum shrink-0" /><span>You bid</span>
+            <ArrowRight size={12} className="text-pfuma-plum shrink-0" />
+            <Stethoscope size={16} className="text-pfuma-plum shrink-0" /><span>Vet certifies</span>
+            <ArrowRight size={12} className="text-pfuma-plum shrink-0" />
+            <CheckCircle size={16} className="text-pfuma-plum shrink-0" /><span>Sale complete</span>
           </div>
         </div>
       </div>
@@ -881,10 +883,10 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Active Listings',    value: listings.length,                           sub: 'Verified with health passports',   icon: Tag,        iconColor: 'text-zunde-plum' },
+          { label: 'Active Listings',    value: listings.length,                           sub: 'Verified with health passports',   icon: Tag,        iconColor: 'text-pfuma-plum' },
           { label: 'Avg. Price / Unit',  value: listings.length ? `$${Math.round(listings.reduce((a, l) => a + 500 + l.currentWeight * 1.5, 0) / listings.length).toLocaleString()}` : '$—', sub: 'Estimated market value',          icon: DollarSign, iconColor: 'text-green-500'  },
           { label: 'Total Listing Value',value: `$${listings.reduce((a, l) => a + 500 + l.currentWeight * 1.5, 0).toLocaleString()}`, sub: 'Combined herd value on market', icon: TrendingUp, iconColor: 'text-blue-500'   },
-          { label: 'Market Sentiment',   value: 'BULLISH',                                 sub: 'Prices trending upward +10%',      icon: Activity,   iconColor: 'text-zunde-gold', textColor: 'text-zunde-plum', accent: 'bg-zunde-plum/10 border-zunde-plum/30' },
+          { label: 'Market Sentiment',   value: 'BULLISH',                                 sub: 'Prices trending upward +10%',      icon: Activity,   iconColor: 'text-pfuma-gold', textColor: 'text-pfuma-plum', accent: 'bg-pfuma-plum/10 border-pfuma-plum/30' },
         ].map(k => (
           <div key={k.label} className={`${k.accent || 'bg-white border-gray-100'} border rounded-2xl p-5`}>
             <div className="flex justify-between items-start mb-2"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{k.label}</p><k.icon size={16} className={k.iconColor} /></div>
@@ -902,9 +904,9 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
             <div className="flex justify-between items-center mb-5">
               <div>
                 <h3 className="text-sm font-black text-gray-800">Verified Marketplace Listings</h3>
-                <p className="text-[11px] text-gray-400 font-medium mt-0.5">All animals have a certified ZUNDE Health Passport — safe to bid</p>
+                <p className="text-[11px] text-gray-400 font-medium mt-0.5">All animals have a certified PFUMA Health Passport — safe to bid</p>
               </div>
-              <button onClick={() => setActiveTab('profile')} className="text-[10px] font-black text-zunde-plum hover:underline uppercase">View All →</button>
+              <button onClick={() => setActiveTab('profile')} className="text-[10px] font-black text-pfuma-plum hover:underline uppercase">View All →</button>
             </div>
             {listings.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-2xl">
@@ -915,26 +917,26 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
             ) : (
               <div className="space-y-4">
                 {listings.map(a => (
-                  <button key={a.id} onClick={() => setActiveTab('profile')} className="w-full flex items-center gap-5 p-4 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-zunde-plum hover:shadow-md transition group text-left">
+                  <button key={a.id} onClick={() => setActiveTab('profile')} className="w-full flex items-center gap-5 p-4 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-pfuma-plum hover:shadow-md transition group text-left">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-200 shrink-0 relative">
                       <img src={a.imageUrl} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition duration-700" alt={a.name} />
-                      <div className="absolute top-2 left-2 bg-zunde-gold text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase">Certified</div>
+                      <div className="absolute top-2 left-2 bg-pfuma-gold text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase">Certified</div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="text-sm font-black text-gray-900">{a.name}</h4>
-                        <span className="text-[9px] font-black bg-zunde-plum/15 text-zunde-plum px-2 py-0.5 rounded-full uppercase">For Sale</span>
+                        <span className="text-[9px] font-black bg-pfuma-plum/15 text-pfuma-plum px-2 py-0.5 rounded-full uppercase">For Sale</span>
                       </div>
                       <p className="text-[11px] text-gray-500 font-medium mb-2">{a.breed} · {a.species} · {a.age} · {a.currentWeight}kg</p>
                       <div className="flex items-center gap-2">
-                        <ShieldCheck size={12} className="text-zunde-plum" />
+                        <ShieldCheck size={12} className="text-pfuma-plum" />
                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-wide">Verified Health Passport · Tag #{a.tagId}</span>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[10px] text-gray-400 font-bold uppercase">Est. Value</p>
-                      <p className="text-xl font-black text-zunde-plum">${(500 + a.currentWeight * 1.5).toLocaleString()}</p>
-                      <button className="mt-2 px-4 py-1.5 bg-zunde-plum text-white text-[10px] font-black rounded-lg uppercase hover:bg-violet-700 transition">Bid</button>
+                      <p className="text-xl font-black text-pfuma-plum">${(500 + a.currentWeight * 1.5).toLocaleString()}</p>
+                      <button className="mt-2 px-4 py-1.5 bg-pfuma-plum text-white text-[10px] font-black rounded-lg uppercase hover:bg-violet-700 transition">Bid</button>
                     </div>
                   </button>
                 ))}
@@ -1000,10 +1002,10 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
             ) : (
               <div className="space-y-3">
                 {RECENT_BIDS.map((b, i) => (
-                  <div key={i} className="p-3.5 bg-zunde-plum/10 border border-zunde-plum/20 rounded-xl">
+                  <div key={i} className="p-3.5 bg-pfuma-plum/10 border border-pfuma-plum/20 rounded-xl">
                     <div className="flex justify-between items-start mb-1">
                       <p className="text-xs font-black text-gray-800">{b.animal}</p>
-                      <p className="text-sm font-black text-zunde-plum">${b.amount}</p>
+                      <p className="text-sm font-black text-pfuma-plum">${b.amount}</p>
                     </div>
                     <p className="text-[10px] text-gray-500 font-medium">{b.bidder}</p>
                     <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{b.time}</p>
@@ -1018,13 +1020,13 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
             <h3 className="text-sm font-black text-gray-800 mb-3">How to Buy</h3>
             <div className="space-y-3">
               {[
-                { n: '1', t: 'Browse Listings', d: 'All animals carry a certified ZUNDE Health Passport' },
+                { n: '1', t: 'Browse Listings', d: 'All animals carry a certified PFUMA Health Passport' },
                 { n: '2', t: 'Check the Passport', d: 'View vaccination history and breed details before bidding' },
                 { n: '3', t: 'Place a Bid', d: 'Your offer goes directly to the farmer via the platform' },
                 { n: '4', t: 'Receive Certificate', d: 'DVS movement permit issued on confirmed sale' },
               ].map(s => (
                 <div key={s.n} className="flex items-start gap-3">
-                  <div className="w-5 h-5 bg-zunde-plum rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0 mt-0.5">{s.n}</div>
+                  <div className="w-5 h-5 bg-pfuma-plum rounded-full flex items-center justify-center text-[9px] font-black text-white shrink-0 mt-0.5">{s.n}</div>
                   <div>
                     <p className="text-[11px] font-black text-gray-800">{s.t}</p>
                     <p className="text-[10px] text-gray-400 font-medium">{s.d}</p>
@@ -1035,11 +1037,203 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
           </div>
 
           {/* Contact seller */}
-          <button onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-3 p-4 bg-zunde-plum rounded-2xl text-left hover:bg-violet-700 transition group">
+          <button onClick={() => setActiveTab('vet')} className="w-full flex items-center gap-3 p-4 bg-pfuma-plum rounded-2xl text-left hover:bg-violet-700 transition group">
             <MessageSquare size={16} className="text-white shrink-0" />
             <div><p className="text-xs font-black text-white">Contact a Seller</p><p className="text-[10px] text-purple-200 font-medium">Message the farmer directly</p></div>
             <ArrowRight size={13} className="text-purple-300 ml-auto" />
           </button>
+        </div>
+      </div>
+
+      <StakeholderMap />
+    </div>
+  );
+};
+
+// ── POLICE DASHBOARD ───────────────────────────────────────────────────────
+const DEMO_PENDING_VERIFICATIONS = [
+  { id: 201, full_name: 'Tendai Chiweshe', role: 'Farmer',   org_name: 'Chiweshe Homestead',  province: 'Mashonaland Central', created_at: '2026-07-14' },
+  { id: 202, full_name: 'Blessing Moyo',   role: 'Retailer', org_name: 'Moyo Livestock Traders', province: 'Midlands',         created_at: '2026-07-15' },
+];
+const DEMO_PENDING_CLEARANCES = [
+  { id: 301, animal_name: 'Zodwa', species: 'Cattle', seller_name: 'Tendai Chiweshe', product_name: 'Zodwa — Mashona Cow', created_at: '2026-07-15' },
+];
+
+const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
+  const [verifications, setVerifications] = useState([]);
+  const [clearances,    setClearances]    = useState([]);
+  const [apiOnline,     setApiOnline]     = useState(false);
+  const [busyId,        setBusyId]        = useState(null);
+  const [feedback,      setFeedback]      = useState(null);
+
+  const authHeaders = { Authorization: `Bearer ${currentUser?.token}` };
+
+  const loadQueues = useCallback(async () => {
+    try {
+      const [vRes, cRes] = await Promise.all([
+        fetch(`${API}/verifications?status=pending`, { headers: authHeaders }),
+        fetch(`${API}/clearances?status=pending`, { headers: authHeaders }),
+      ]);
+      if (!vRes.ok || !cRes.ok) throw new Error();
+      setVerifications(await vRes.json());
+      setClearances(await cRes.json());
+      setApiOnline(true);
+    } catch {
+      setVerifications(DEMO_PENDING_VERIFICATIONS);
+      setClearances(DEMO_PENDING_CLEARANCES);
+      setApiOnline(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.token]);
+
+  useEffect(() => { loadQueues(); }, [loadQueues]);
+
+  const resolveVerification = async (userId, verification_status) => {
+    setBusyId(userId);
+    try {
+      await fetch(`${API}/verifications/${userId}`, {
+        method: 'PATCH', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verification_status }),
+      });
+    } catch { /* offline — reflect locally only */ }
+    setVerifications(prev => prev.filter(v => v.id !== userId));
+    setFeedback(verification_status === 'verified' ? 'Applicant verified.' : 'Applicant rejected.');
+    setBusyId(null);
+    setTimeout(() => setFeedback(null), 2500);
+  };
+
+  const resolveClearance = async (clearanceId, status) => {
+    const permit = status === 'cleared' ? window.prompt('Enter DVS/ZRP movement permit number to issue with this clearance:') : null;
+    if (status === 'cleared' && !permit) return;
+    setBusyId(clearanceId);
+    try {
+      await fetch(`${API}/clearances/${clearanceId}`, {
+        method: 'PATCH', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, movement_permit_number: permit }),
+      });
+    } catch { /* offline — reflect locally only */ }
+    setClearances(prev => prev.filter(c => c.id !== clearanceId));
+    setFeedback(status === 'cleared' ? 'Sale cleared for listing.' : 'Sale clearance rejected.');
+    setBusyId(null);
+    setTimeout(() => setFeedback(null), 2500);
+  };
+
+  const theftAlerts = (notifications || []).filter(n => /theft|breach|security/i.test(`${n.title} ${n.msg}`));
+
+  return (
+    <div className="p-6 bg-gray-950 space-y-6 text-left overflow-y-auto h-full">
+
+      {/* Greeting */}
+      <div className="bg-red-900/30 border border-red-700/40 rounded-3xl p-6 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-red-300 text-xs font-black uppercase tracking-[3px] mb-1">Stock Theft &amp; Verification Unit · {currentUser?.jurisdictionProvince || currentUser?.province || 'Mashonaland West'}</p>
+            <h2 className="text-2xl font-black text-white leading-tight">{greet()}, {currentUser?.name || 'Officer'}</h2>
+            <p className="text-gray-400 text-sm font-medium mt-1">Review signup verifications and livestock sale-clearance requests before they go live on PFUMA.</p>
+          </div>
+          {!apiOnline && (
+            <div className="flex items-center gap-2 bg-yellow-400/20 border border-yellow-400/30 px-4 py-2.5 rounded-2xl shrink-0">
+              <AlertTriangle size={13} className="text-yellow-400" />
+              <span className="text-xs font-black text-yellow-300">Demo mode — start Flask API to go live</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {feedback && (
+        <div className="flex items-center gap-2 bg-green-900/30 border border-green-700/40 text-green-300 text-xs font-black px-4 py-3 rounded-xl" role="status">
+          <CheckCircle size={14} /> {feedback}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="flex justify-between items-start mb-2"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending Signups</p><ShieldCheck size={16} className="text-yellow-400" /></div>
+          <p className="text-3xl font-black text-white">{verifications.length}</p>
+          <p className="text-[11px] text-gray-500 font-medium mt-1">Farmer / Retailer / Supplier applications awaiting review</p>
+        </div>
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="flex justify-between items-start mb-2"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending Clearances</p><Tag size={16} className="text-orange-400" /></div>
+          <p className="text-3xl font-black text-white">{clearances.length}</p>
+          <p className="text-[11px] text-gray-500 font-medium mt-1">Livestock listings awaiting sale clearance</p>
+        </div>
+        <div className={`${theftAlerts.length ? 'bg-red-500/10 border-red-500/20' : 'bg-white/5 border-white/10'} border rounded-2xl p-5`}>
+          <div className="flex justify-between items-start mb-2"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Theft Alerts</p><AlertTriangle size={16} className={theftAlerts.length ? 'text-red-400' : 'text-gray-500'} /></div>
+          <p className={`text-3xl font-black ${theftAlerts.length ? 'text-red-400' : 'text-white'}`}>{theftAlerts.length}</p>
+          <p className="text-[11px] text-gray-500 font-medium mt-1">From IoT geofence &amp; movement sensors</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+
+        {/* Verification queue */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h3 className="text-sm font-black text-white mb-1">Signup Verification Queue</h3>
+          <p className="text-[11px] text-gray-500 font-medium mb-4">Confirm ID and credential documents before an applicant gets full access. Vet applicants are peer-reviewed by an existing verified vet, not shown here.</p>
+          {verifications.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <CheckCircle size={26} className="text-green-500 mb-2" />
+              <p className="text-xs font-black text-gray-400">Queue is clear</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {verifications.map(v => (
+                <div key={v.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-xs font-black text-white">{v.full_name}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{v.role} · {v.org_name} · {v.province}</p>
+                    </div>
+                    <span className="text-[9px] font-black text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded-full uppercase shrink-0">Pending</span>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button disabled={busyId === v.id} onClick={() => resolveVerification(v.id, 'verified')} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-green-700 transition disabled:opacity-40">Verify</button>
+                    <button disabled={busyId === v.id} onClick={() => resolveVerification(v.id, 'rejected')} className="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg text-[10px] font-black uppercase hover:bg-white/20 transition disabled:opacity-40">Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Clearance queue */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <h3 className="text-sm font-black text-white mb-1">Sale Clearance Queue</h3>
+          <p className="text-[11px] text-gray-500 font-medium mb-4">Verify ownership/brand papers match the animal before a livestock listing is allowed on the Marketplace.</p>
+          {clearances.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <CheckCircle size={26} className="text-green-500 mb-2" />
+              <p className="text-xs font-black text-gray-400">Queue is clear</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {clearances.map(c => (
+                <div key={c.id} className="p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-xs font-black text-white">{c.product_name || c.animal_name}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">Seller: {c.seller_name} · {c.species || 'Livestock'}</p>
+                    </div>
+                    <span className="text-[9px] font-black text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full uppercase shrink-0">Pending</span>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button disabled={busyId === c.id} onClick={() => resolveClearance(c.id, 'cleared')} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-[10px] font-black uppercase hover:bg-green-700 transition disabled:opacity-40">Clear Sale</button>
+                    <button disabled={busyId === c.id} onClick={() => resolveClearance(c.id, 'rejected')} className="flex-1 py-2 bg-white/10 text-gray-300 rounded-lg text-[10px] font-black uppercase hover:bg-white/20 transition disabled:opacity-40">Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick nav */}
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+        <h3 className="text-sm font-black text-white mb-3">Quick Navigation</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <QuickAction icon={Store}          label="Marketplace"    desc="Monitor livestock trade activity" color="bg-red-700" onClick={() => setActiveTab('marketplace')} />
+          <QuickAction icon={MessageSquare}  label="Messenger"      desc="Coordinate with farmers &amp; vets" color="bg-red-700" onClick={() => setActiveTab('vet')} />
         </div>
       </div>
 
@@ -1149,56 +1343,174 @@ const NAV_SECTIONS = {
       ]
     },
   ],
+  Police: [
+    {
+      section: 'Overview',
+      items: [
+        { tab: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard',     desc: 'Verification & clearance queues' },
+      ]
+    },
+    {
+      section: 'Oversight',
+      items: [
+        { tab: 'marketplace', icon: Store,           label: 'Marketplace',   desc: 'Monitor livestock trade activity' },
+        { tab: 'vet',         icon: MessageSquare,   label: 'Messenger',     desc: 'Vets, suppliers, farmers & retailers' },
+      ]
+    },
+    {
+      section: 'Surveillance',
+      items: [
+        { tab: 'iot',         icon: Radio,           label: 'IoT Monitor',   desc: 'Theft & geofence alerts' },
+      ]
+    },
+  ],
 };
 
 const ROLE_ACCENT = {
-  Farmer:      'bg-zunde-green',
-  Veterinarian:'bg-zunde-slate',
-  Supplier:    'bg-zunde-gold',
-  Retailer:    'bg-zunde-plum',
+  Farmer:      'bg-pfuma-green',
+  Veterinarian:'bg-pfuma-slate',
+  Supplier:    'bg-pfuma-gold',
+  Retailer:    'bg-pfuma-plum',
+  Police:      'bg-red-800',
 };
 const ROLE_ACTIVE_BG = {
   Farmer:      'bg-white/10',
   Veterinarian:'bg-white/10',
   Supplier:    'bg-white/15',
   Retailer:    'bg-white/10',
+  Police:      'bg-white/10',
 };
+
+const TOKEN_STORAGE_KEY = 'pfuma_token';
+
+const IMAGE_BY_SPECIES = {
+  Cattle: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&q=80&w=800',
+  Goat:   'https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&q=80&w=800',
+  Sheep:  'https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&q=80&w=800',
+  Pig:    'https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&q=80&w=800',
+};
+
+// Maps a scoped /animals row from the backend into the shape the rest of the
+// app's components already expect (camelCase, weightHistory, etc).
+const animalFromApi = (a) => ({
+  id: a.id, name: a.name, species: a.species, breed: a.breed,
+  birthDate: a.birth_date, tagId: a.tag_id, brandId: a.brand_id,
+  sireId: a.sire_id, damId: a.dam_id, birthWeight: a.birth_weight, currentWeight: a.current_weight,
+  imageUrl: a.image_url || IMAGE_BY_SPECIES[a.species] || IMAGE_BY_SPECIES.Cattle,
+  weightHistory: (a.weight_history || []).map(w => ({ month: w.month_label, weight: w.weight_kg })),
+  forSale: !!a.for_sale, costToDate: a.cost_to_date || 0,
+});
 
 // ── APP ────────────────────────────────────────────────────────────────────
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [animals,     setAnimals]     = useState(INITIAL_ANIMALS);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [animals,     setAnimals]     = useState([]);
   const [activeTab,   setActiveTab]   = useState('dashboard');
   const [completedTasks, setCompletedTasks] = useState([]);
   const [auditLog,    setAuditLog]    = useState(INITIAL_LOGS);
-  const [inventory,   setInventory]   = useState(INITIAL_INVENTORY);
+  const [inventory,   setInventory]   = useState([]);
   const [notifications] = useState([
     { id: 1, title: 'January Disease Alert', msg: 'Chegutu Area — increased tick counts detected.', type: 'Critical', time: '1h ago' },
     { id: 2, title: 'Vaccine Recall',         msg: 'Lot #992 Oxytetracycline recalled by supplier.',  type: 'Info',     time: '4h ago' },
   ]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
-  const addAnimal = (newAnimal) => {
-    const images = {
-      Cattle: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?auto=format&fit=crop&q=80&w=800',
-      Goat:   'https://images.unsplash.com/photo-1524024973431-2ad916746881?auto=format&fit=crop&q=80&w=800',
-      Sheep:  'https://images.unsplash.com/photo-1484557985045-edf25e08da73?auto=format&fit=crop&q=80&w=800',
-      Pig:    'https://images.unsplash.com/photo-1516467508483-a7212febe31a?auto=format&fit=crop&q=80&w=800',
-    };
-    const imageUrl     = images[newAnimal.species] || images.Cattle;
-    const weightHistory = [{ month: 'Initial', weight: parseFloat(newAnimal.birthWeight) || 0 }];
-    setAnimals(prev => [{ ...newAnimal, imageUrl, weightHistory, costToDate: 50, forSale: false }, ...prev]);
+  const authFetch = useCallback((path, opts = {}) => fetch(`${API}${path}`, {
+    ...opts,
+    headers: { ...(opts.headers || {}), Authorization: `Bearer ${currentUser?.token}` },
+  }), [currentUser?.token]);
+
+  const loadUserData = useCallback(async (user) => {
+    try {
+      const res = await fetch(`${API}/animals`, { headers: { Authorization: `Bearer ${user.token}` } });
+      if (res.ok) setAnimals((await res.json()).map(animalFromApi));
+    } catch { /* offline — keep whatever is already loaded */ }
+    if (user.role === 'Farmer') {
+      try {
+        const res = await fetch(`${API}/inventory/${user.id}`, { headers: { Authorization: `Bearer ${user.token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          setInventory(data.map(i => ({ id: i.id, name: i.medicine_name, stock: Number(i.stock), unit: i.unit, min: Number(i.min_stock), supplier: i.supplier, price: Number(i.price_usd) })));
+        }
+      } catch { /* offline */ }
+    }
+  }, []);
+
+  // Restore session from a stored token on first load.
+  useEffect(() => {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (!token) { setSessionChecked(true); return; }
+    (async () => {
+      try {
+        const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const apiUser = await res.json();
+          const user = {
+            id: apiUser.id, token, name: apiUser.full_name, phone: apiUser.phone, email: apiUser.email,
+            org: apiUser.org_name, province: apiUser.province, district: apiUser.district, address: apiUser.address,
+            role: apiUser.role, farmSize: apiUser.farm_size_ha,
+            species: (apiUser.species_farmed || '').split(',').filter(Boolean),
+            licenseNumber: apiUser.license_number, speciality: apiUser.speciality, businessReg: apiUser.business_reg,
+            supplyCategories: (apiUser.supply_categories || '').split(',').filter(Boolean),
+            tradingAreas: apiUser.trading_areas, badgeNumber: apiUser.badge_number, station: apiUser.station,
+            jurisdictionProvince: apiUser.jurisdiction_province, verificationStatus: apiUser.verification_status,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.full_name || 'PFUMA'}`,
+          };
+          setCurrentUser(user);
+          loadUserData(user);
+        } else {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
+        }
+      } catch { /* API offline — fall through to login screen */ }
+      setSessionChecked(true);
+    })();
+  }, [loadUserData]);
+
+  const handleLoginSuccess = (user) => {
+    localStorage.setItem(TOKEN_STORAGE_KEY, user.token);
+    setCurrentUser(user);
+    loadUserData(user);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    setCurrentUser(null);
+    setAnimals([]);
+    setInventory([]);
+  };
+
+  const addAnimal = async (newAnimal) => {
+    const imageUrl = IMAGE_BY_SPECIES[newAnimal.species] || IMAGE_BY_SPECIES.Cattle;
+    try {
+      const res = await authFetch('/animals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newAnimal, image_url: imageUrl }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const weightHistory = [{ month: 'Initial', weight: parseFloat(newAnimal.birthWeight) || 0 }];
+        setAnimals(prev => [{ ...newAnimal, id: data.id, imageUrl, weightHistory, costToDate: 50, forSale: false }, ...prev]);
+      }
+    } catch { /* offline — add locally so the demo still flows */
+      const weightHistory = [{ month: 'Initial', weight: parseFloat(newAnimal.birthWeight) || 0 }];
+      setAnimals(prev => [{ ...newAnimal, id: Date.now(), imageUrl, weightHistory, costToDate: 50, forSale: false }, ...prev]);
+    }
     setActiveTab('profile');
   };
 
   const addAuditLog    = (entry)    => setAuditLog(prev => [entry, ...prev]);
-  const handleListAnimal = (id)     => setAnimals(prev => prev.map(a => a.id === id ? { ...a, forSale: !a.forSale } : a));
+  const handleListAnimal = async (id) => {
+    setAnimals(prev => prev.map(a => a.id === id ? { ...a, forSale: !a.forSale } : a));
+    try { await authFetch(`/animals/${id}/sale`, { method: 'PATCH' }); } catch { /* offline — local toggle already applied */ }
+  };
 
-  if (!currentUser) return <AuthPortal onLogin={(user) => setCurrentUser(user)} />;
+  if (!sessionChecked) return null;
+  if (!currentUser) return <AuthPortal onLogin={handleLoginSuccess} />;
 
   const role        = currentUser.role;
   const navSections = NAV_SECTIONS[role] || NAV_SECTIONS.Farmer;
-  const sidebarBg   = ROLE_ACCENT[role]  || 'bg-zunde-green';
+  const sidebarBg   = ROLE_ACCENT[role]  || 'bg-pfuma-green';
   const activeBg    = ROLE_ACTIVE_BG[role] || 'bg-white/10';
 
   return (
@@ -1209,10 +1521,9 @@ function App() {
 
         {/* Logo */}
         <div className="px-6 pt-6 pb-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-zunde-green font-black text-2xl shadow-lg shrink-0">R</div>
+          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-pfuma-green font-black text-2xl shadow-lg shrink-0">P</div>
           <div>
-            <span className="text-base font-black tracking-tighter block leading-none">ZUNDE</span>
-            <span className="text-[9px] font-black text-yellow-400 uppercase tracking-[2px]">RaMambo</span>
+            <span className="text-base font-black tracking-tighter block leading-none">PFUMA</span>
           </div>
         </div>
 
@@ -1256,7 +1567,7 @@ function App() {
             </div>
           </div>
           <button
-            onClick={() => setCurrentUser(null)}
+            onClick={handleSignOut}
             className="w-full flex items-center justify-center gap-2 py-2.5 border border-white/10 rounded-xl text-white/40 hover:text-white hover:bg-red-600/20 transition text-[10px] font-black uppercase tracking-widest"
           >
             <LogOut size={13} /> Sign Out
@@ -1306,18 +1617,19 @@ function App() {
               {role === 'Veterinarian' && <VeterinarianDashboard animals={animals} notifications={notifications} setActiveTab={setActiveTab} currentUser={currentUser} />}
               {role === 'Supplier'     && <SupplierDashboard     inventory={inventory} setActiveTab={setActiveTab} currentUser={currentUser} />}
               {role === 'Retailer'     && <RetailerDashboard     animals={animals} setActiveTab={setActiveTab} currentUser={currentUser} />}
+              {role === 'Police'       && <PoliceDashboard       notifications={notifications} setActiveTab={setActiveTab} currentUser={currentUser} />}
             </ErrorBoundary>
           )}
           {activeTab === 'profile'     && <ErrorBoundary><AnimalProfile animals={animals} onAddAnimal={addAnimal} auditLog={auditLog} currentUser={currentUser} onListAnimal={handleListAnimal} /></ErrorBoundary>}
           {activeTab === 'health'      && <ErrorBoundary><HealthManagement animals={animals} completedTasks={completedTasks} setCompletedTasks={setCompletedTasks} auditLog={auditLog} setAuditLog={setAuditLog} inventory={inventory} setInventory={setInventory} /></ErrorBoundary>}
           {activeTab === 'disease'     && <ErrorBoundary><DiseaseDetection animals={animals} onAddAuditLog={addAuditLog} /></ErrorBoundary>}
           {activeTab === 'vet'         && <ErrorBoundary><VetCommunication animals={animals} currentUser={currentUser} /></ErrorBoundary>}
-          {activeTab === 'iot'         && <ErrorBoundary><HardwareSimulation animals={animals} /></ErrorBoundary>}
+          {activeTab === 'iot'         && <ErrorBoundary><HardwareSimulation animals={animals} currentUser={currentUser} /></ErrorBoundary>}
           {activeTab === 'marketplace' && <ErrorBoundary><Marketplace currentUser={currentUser} animals={animals} onListAnimal={handleListAnimal} /></ErrorBoundary>}
           {activeTab === 'feed'        && <ErrorBoundary><FeedAnalyzer /></ErrorBoundary>}
         </div>
 
-        <JindaRaMambo setActiveTab={setActiveTab} animals={animals} />
+        <Jinda setActiveTab={setActiveTab} animals={animals} currentUser={currentUser} />
       </main>
     </div>
   );

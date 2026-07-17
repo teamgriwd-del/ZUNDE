@@ -151,7 +151,7 @@ export default function MarketplaceScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSub}>ZUNDE RaMambo</Text>
+          <Text style={styles.headerSub}>PFUMA</Text>
           <Text style={styles.headerTitle}>Agri Marketplace</Text>
           <Text style={styles.headerDesc}>Livestock · Feed · Medicine · Equipment</Text>
         </View>

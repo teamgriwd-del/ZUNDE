@@ -45,7 +45,7 @@
   border-radius: 4px;
 }
 
-.zunde-nav {
+.pfuma-nav {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
@@ -58,7 +58,7 @@
   flex-wrap: wrap;
 }
 
-.zunde-nav button {
+.pfuma-nav button {
   padding: 0.7rem 1.2rem;
   border: 1px solid transparent;
   background: transparent;
@@ -73,24 +73,24 @@
   gap: 0.5rem;
 }
 
-.zunde-nav button:hover {
+.pfuma-nav button:hover {
   background: #e8f5e9;
   color: #1b5e20;
 }
 
-.zunde-nav button.active {
+.pfuma-nav button.active {
   background: #1b5e20;
   color: white;
   box-shadow: 0 4px 10px rgba(27, 94, 32, 0.2);
 }
 
-.zunde-main {
+.pfuma-main {
   padding: 2rem 1rem;
   min-height: 60vh;
 }
 
 /* Dashboard Styles */
-.zunde-dashboard {
+.pfuma-dashboard {
   display: flex;
   flex-direction: column;
   gap: 2rem;
@@ -207,5 +207,5 @@ footer {
 
 @media (max-width: 600px) {
   .logo-text { font-size: 2rem; }
-  .zunde-nav button { padding: 0.6rem 0.8rem; font-size: 0.8rem; }
+  .pfuma-nav button { padding: 0.6rem 0.8rem; font-size: 0.8rem; }
 }

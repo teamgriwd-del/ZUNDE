@@ -170,10 +170,10 @@ const StakeholderMap = () => (
   <View style={s.smCard}>
     <View style={s.smTitleRow}>
       <Globe size={15} color={COLORS.primary} />
-      <Text style={s.smTitle}>How ZUNDE Connects Everyone</Text>
+      <Text style={s.smTitle}>How PFUMA Connects Everyone</Text>
     </View>
     <Text style={s.smDesc}>
-      ZUNDE is a four-stakeholder ecosystem. Every role plays a specific part — here's how they all connect.
+      PFUMA is a four-stakeholder ecosystem. Every role plays a specific part — here's how they all connect.
     </Text>
     {[
       { icon: Sprout,      role: 'Farmer',       color: COLORS.light,  text: COLORS.primary, desc: 'Registers animals, tracks health, orders medicines, lists livestock for sale.' },
@@ -278,7 +278,7 @@ function FarmerDashboard({ currentUser, animals, navigation }) {
 
       {/* Role explanation */}
       <View style={s.panel}>
-        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on ZUNDE</Text>
+        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on PFUMA</Text>
         <Text style={{ fontSize: 14, fontWeight: '900', color: '#1a1a1a', marginBottom: 6 }}>You are the heart of the herd</Text>
         <Text style={{ fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 10 }}>
           Register your animals, track their health, and reorder medicine before stocks run low. When ready, list animals on the Marketplace — a DVS vet certifies them so retailers across Zimbabwe can bid with confidence.
@@ -363,7 +363,7 @@ function FarmerDashboard({ currentUser, animals, navigation }) {
       <SectionLabel icon={Tag}>SELL YOUR ANIMALS</SectionLabel>
       <View style={s.panel}>
         <Text style={s.panelDesc}>
-          Toggle any animal to list it on the ZUNDE Marketplace. Retailers and livestock buyers will immediately see it.
+          Toggle any animal to list it on the PFUMA Marketplace. Retailers and livestock buyers will immediately see it.
         </Text>
         {localAnimals.length === 0 ? (
           <View style={s.emptyInner}>
@@ -440,7 +440,7 @@ function FarmerDashboard({ currentUser, animals, navigation }) {
       {/* Farmers Near You */}
       <SectionLabel icon={Users}>FARMERS NEAR YOU</SectionLabel>
       <View style={s.panel}>
-        <Text style={s.panelDesc}>Connect with other ZUNDE farmers to swap tips, feed, or breeding stock.</Text>
+        <Text style={s.panelDesc}>Connect with other PFUMA farmers to swap tips, feed, or breeding stock.</Text>
         {NEARBY_FARMERS.map(f => (
           <View key={f.id} style={s.peerRow}>
             <View style={[s.peerAvatar, { backgroundColor: f.color }]}>
@@ -497,7 +497,7 @@ function VeterinarianDashboard({ currentUser, navigation }) {
       <View style={s.kpiRow}>
         <KpiCard label="Farms Under Watch" value="4"   sub="Mashonaland West registry"     accent="#1e293b" textColor="#f8fafc" borderColor="#334155"
           icon={Users} iconColor="#7dd3fc" iconBg="rgba(125,211,252,0.12)" />
-        <KpiCard label="Node Sync"         value="99%" sub="RaMambo mesh network online"   accent="#1e293b" textColor="#4ade80" borderColor="#334155"
+        <KpiCard label="Node Sync"         value="99%" sub="PFUMA mesh network online"   accent="#1e293b" textColor="#4ade80" borderColor="#334155"
           icon={Wifi} iconColor="#4ade80" iconBg="rgba(74,222,128,0.12)" />
       </View>
 
@@ -571,7 +571,7 @@ function VeterinarianDashboard({ currentUser, navigation }) {
       <SectionLabel light icon={Wifi}>PROVINCIAL NETWORK HEALTH</SectionLabel>
       <View style={[s.panel, { backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1 }]}>
         <Text style={{ color: '#64748b', fontSize: 11, marginBottom: 4, lineHeight: 16 }}>
-          RaMambo mesh node sync rate — last 7 days
+          PFUMA mesh node sync rate — last 7 days
         </Text>
         <MiniBarChart data={NETWORK_HEALTH} labelKey="day" valueKey="sync" color={COLORS.sprout} light />
       </View>
@@ -610,10 +610,10 @@ function SupplierDashboard({ currentUser, navigation }) {
 
       {/* Role explanation */}
       <View style={s.panel}>
-        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.gold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on ZUNDE</Text>
+        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.gold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on PFUMA</Text>
         <Text style={{ fontSize: 14, fontWeight: '900', color: '#1a1a1a', marginBottom: 6 }}>You are a veterinary medicine & vaccine distributor</Text>
         <Text style={{ fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 10 }}>
-          Farmers across Zimbabwe register on ZUNDE to manage herd health. When they run low on vaccines or medicines, they contact you through the platform. You fulfill the order and dispatch to the farm.
+          Farmers across Zimbabwe register on PFUMA to manage herd health. When they run low on vaccines or medicines, they contact you through the platform. You fulfill the order and dispatch to the farm.
         </Text>
         <View style={s.flowRow}>
           <Sprout size={16} color={COLORS.gold} />
@@ -712,10 +712,10 @@ function RetailerDashboard({ currentUser, navigation }) {
 
       {/* Role explanation */}
       <View style={s.panel}>
-        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.purple, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on ZUNDE</Text>
+        <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.purple, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Your Role on PFUMA</Text>
         <Text style={{ fontSize: 14, fontWeight: '900', color: '#1a1a1a', marginBottom: 6 }}>You are a livestock buyer & trader</Text>
         <Text style={{ fontSize: 12, color: '#666', lineHeight: 18, marginBottom: 10 }}>
-          Farmers list their animals for sale on ZUNDE. Each animal comes with a certified Health Passport. You place a bid, the farmer accepts, and a DVS Vet issues an official movement certificate so you can legally transport the animal.
+          Farmers list their animals for sale on PFUMA. Each animal comes with a certified Health Passport. You place a bid, the farmer accepts, and a DVS Vet issues an official movement certificate so you can legally transport the animal.
         </Text>
         <View style={s.flowRow}>
           <Sprout size={16} color={COLORS.purple} />
@@ -749,7 +749,7 @@ function RetailerDashboard({ currentUser, navigation }) {
       {/* Listings */}
       <SectionLabel icon={ShoppingCart}>VERIFIED MARKETPLACE LISTINGS</SectionLabel>
       <View style={s.panel}>
-        <Text style={s.panelDesc}>All animals have a certified ZUNDE Health Passport — safe to bid</Text>
+        <Text style={s.panelDesc}>All animals have a certified PFUMA Health Passport — safe to bid</Text>
         {listings.length === 0 ? (
           <View style={s.emptyInner}>
             <ShoppingCart size={36} color={COLORS.purple} />
@@ -806,7 +806,7 @@ function RetailerDashboard({ currentUser, navigation }) {
       <SectionLabel icon={ListChecks}>HOW TO BUY</SectionLabel>
       <View style={s.panel}>
         {[
-          { n: '1', t: 'Browse Listings',   d: 'All animals carry a certified ZUNDE Health Passport' },
+          { n: '1', t: 'Browse Listings',   d: 'All animals carry a certified PFUMA Health Passport' },
           { n: '2', t: 'Check the Passport',d: 'View vaccination history and breed details before bidding' },
           { n: '3', t: 'Place a Bid',        d: 'Your offer goes directly to the farmer via the platform' },
           { n: '4', t: 'Receive Certificate',d: 'DVS movement permit issued on confirmed sale' },
@@ -845,9 +845,9 @@ export default function DashboardScreen({ currentUser, onLogout, navigation }) {
       {/* Top bar */}
       <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.topBar}>
         <View style={s.logoRow}>
-          <View style={s.logoBox}><Text style={s.logoText}>R</Text></View>
+          <View style={s.logoBox}><Text style={s.logoText}>P</Text></View>
           <View>
-            <Text style={s.logoName}>ZUNDE RaMambo</Text>
+            <Text style={s.logoName}>PFUMA</Text>
             <Text style={s.logoTagline}>Zimbabwe's Livestock Platform</Text>
           </View>
         </View>

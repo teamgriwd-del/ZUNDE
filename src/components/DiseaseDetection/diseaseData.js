@@ -248,6 +248,131 @@ export const diseaseDatabase = [
       "Maintain full 21-day quarantine for all imported or purchased cattle.",
       "Support national surveillance programs — mass testing is your community's protection."
     ]
+  },
+  {
+    id: 11,
+    name: "African Swine Fever (ASF)",
+    severity: "Critical",
+    quarantineRequired: true,
+    affectedSpecies: ["Pig"],
+    symptoms: {
+      primary: ["cyanosis (blue-purple skin discoloration)", "sudden death"],
+      secondary: ["high fever", "loss of appetite", "lethargy", "nasal discharge"]
+    },
+    actionPlan: [
+      "Report to DVS immediately — ASF is WOAH-notifiable and there is no widely available vaccine.",
+      "Isolate the herd and impose a complete standstill on all pig movement from the premises.",
+      "Stop feeding any food waste or swill immediately — this is a known ASF transmission route.",
+      "Because ASF and Classical Swine Fever look almost identical, do not assume which one it is — lab testing is required to confirm.",
+      "Cooperate fully with DVS on biosecurity measures, which may include compulsory culling."
+    ],
+    preventionTips: [
+      "Biosecurity is the primary defence since no reliable vaccine exists — control who and what enters the pig area.",
+      "Disinfect visitor footwear and vehicles before they reach pig housing.",
+      "Never feed untreated food waste or swill — a leading cause of ASF outbreaks.",
+      "Control contact between domestic pigs and wild pigs or warthogs.",
+      "Report any sudden, unexplained pig deaths to DVS before moving or selling any animal from the premises."
+    ]
+  },
+  {
+    id: 12,
+    name: "Classical Swine Fever (CSF)",
+    severity: "Critical",
+    quarantineRequired: true,
+    affectedSpecies: ["Pig"],
+    symptoms: {
+      primary: ["purple skin discoloration", "unsteady gait"],
+      secondary: ["high fever", "loss of appetite", "conjunctivitis", "sudden death"]
+    },
+    actionPlan: [
+      "Report to DVS immediately — CSF is highly infectious, often fatal, and notifiable.",
+      "Isolate the herd and impose a complete standstill on all pig movement from the premises.",
+      "Do not assume this is CSF rather than African Swine Fever — the two are clinically almost indistinguishable and require lab testing to tell apart.",
+      "Avoid any treatment without official veterinary authorization.",
+      "Cooperate fully with DVS on biosecurity measures, which may include compulsory culling."
+    ],
+    preventionTips: [
+      "Maintain strict biosecurity — control introduction of new pigs and disinfect equipment between pens.",
+      "Quarantine all newly purchased pigs before mixing with the existing herd.",
+      "Never feed untreated food waste or swill.",
+      "Vaccinate where a locally approved CSF vaccine is available — confirm current availability with DVS.",
+      "Report any suspicious die-off immediately rather than waiting to see if it spreads."
+    ]
+  },
+  {
+    id: 13,
+    name: "Peste des Petits Ruminants (PPR)",
+    severity: "Critical",
+    quarantineRequired: true,
+    affectedSpecies: ["Goat", "Sheep"],
+    symptoms: {
+      primary: ["mouth erosions/ulcers", "severe diarrhea"],
+      secondary: ["high fever", "nasal discharge", "labored breathing", "loss of appetite"]
+    },
+    actionPlan: [
+      "Isolate affected animals from the rest of the flock/herd immediately.",
+      "Report to DVS immediately — PPR is a WOAH-notifiable transboundary disease.",
+      "Vaccinate healthy in-contact animals promptly if directed by your vet or DVS.",
+      "Provide soft, easily digestible feed and ensure constant water access — mouth sores make normal feeding painful.",
+      "Restrict movement of the flock/herd to prevent spreading infection to neighbouring farms."
+    ],
+    preventionTips: [
+      "Vaccinate goats and sheep at around 4 months of age — immunity typically lasts about 3 years.",
+      "Treat PPR as the leading small-ruminant disease threat in the region — this is a core vaccine, not optional.",
+      "Quarantine all newly purchased animals for at least 21 days before mixing with the flock/herd.",
+      "Avoid mixing flocks/herds at communal grazing or watering points during known outbreak periods.",
+      "Report any cluster of high fever, mouth sores, or severe diarrhoea to DVS immediately."
+    ]
+  },
+  {
+    id: 14,
+    name: "Sheep and Goat Pox",
+    severity: "Critical",
+    quarantineRequired: true,
+    affectedSpecies: ["Sheep", "Goat"],
+    symptoms: {
+      primary: ["skin nodules", "fever"],
+      secondary: ["excessive salivation", "loss of appetite", "lethargy"]
+    },
+    actionPlan: [
+      "Isolate affected animals immediately — this is a WOAH Class A-notifiable disease.",
+      "Report to DVS immediately rather than waiting to see if it spreads.",
+      "Vaccinate all healthy in-contact animals promptly if directed by your vet or DVS.",
+      "Control insect vectors and limit direct contact between animals in the flock/herd.",
+      "Keep skin nodules clean to reduce secondary bacterial infection and provide supportive care as advised."
+    ],
+    preventionTips: [
+      "Vaccinate as a core part of your flock/herd health programme, per local DVS/vet schedule.",
+      "Quarantine all newly purchased sheep and goats for at least 21 days before mixing them in.",
+      "Avoid purchasing animals from areas with known outbreaks.",
+      "Report any suspicious skin nodules or vesicles to DVS promptly.",
+      "Control contact with untested or newly introduced animals at communal grazing points."
+    ]
+  },
+  {
+    id: 15,
+    name: "Contagious Caprine Pleuropneumonia (CCPP)",
+    severity: "Critical",
+    quarantineRequired: true,
+    affectedSpecies: ["Goat"],
+    symptoms: {
+      primary: ["labored breathing", "frothy salivation"],
+      secondary: ["high fever", "coughing", "nasal discharge", "lethargy"]
+    },
+    actionPlan: [
+      "Isolate affected goats immediately — CCPP can kill nearly an entire affected herd, so treat any respiratory-distress cluster as an emergency.",
+      "Report to DVS/your vet urgently — lab confirmation matters since CCPP can be confused with PPR or pasteurellosis.",
+      "Avoid mixing the herd with untested or newly introduced goats until the outbreak is resolved.",
+      "Provide supportive care (shade, water, reduced handling stress) only under veterinary guidance.",
+      "Restrict herd movement until DVS clears the premises."
+    ],
+    preventionTips: [
+      "Biosecurity — avoiding contact with untested or newly introduced goats — is as important as vaccination given the very high mortality of an outbreak.",
+      "Vaccinate where a vaccine is available/deployed locally, per DVS guidance.",
+      "Quarantine all newly purchased goats before mixing with the existing herd.",
+      "Monitor closely for coughing, laboured breathing, or frothy salivation during any respiratory illness cluster.",
+      "Confirm current CCPP vaccine availability with DVS, since deployment varies by district."
+    ]
   }
 ];
 
@@ -258,14 +383,16 @@ export const symptomCategories = [
       "blisters", "lameness", "excessive salivation", "skin nodules",
       "enlarged lymph nodes", "bloody discharge from orifices", "swollen lymph nodes",
       "cloudy eyes", "crackling skin", "swollen leg muscle", "hair loss",
-      "thickened skin", "skin crusting", "retained placenta", "abortion"
+      "thickened skin", "skin crusting", "retained placenta", "abortion",
+      "cyanosis (blue-purple skin discoloration)", "purple skin discoloration",
+      "unsteady gait", "conjunctivitis", "mouth erosions/ulcers"
     ]
   },
   {
     name: "Respiratory",
     symptoms: [
       "coughing", "nasal discharge", "labored breathing", "froth from mouth/nose",
-      "difficult breathing", "painful breathing"
+      "difficult breathing", "painful breathing", "frothy salivation"
     ]
   },
   {
@@ -273,7 +400,8 @@ export const symptomCategories = [
     symptoms: [
       "fever", "loss of appetite", "lethargy", "sudden death", "bloating",
       "tremors", "droopy ears", "restlessness", "weight loss",
-      "reduced milk production", "sudden lameness", "high fever", "intense scratching"
+      "reduced milk production", "sudden lameness", "high fever", "intense scratching",
+      "severe diarrhea"
     ]
   }
 ];

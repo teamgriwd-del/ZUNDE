@@ -69,7 +69,7 @@ export default function ProfileScreen({ navigation, currentUser, onLogout }) {
           <View style={styles.apiStatus}>
             <View style={styles.apiDot} />
             <View>
-              <Text style={styles.apiLabel}>ZUNDE API</Text>
+              <Text style={styles.apiLabel}>PFUMA API</Text>
               <Text style={styles.apiUrl}>{API}</Text>
             </View>
           </View>
@@ -95,7 +95,7 @@ export default function ProfileScreen({ navigation, currentUser, onLogout }) {
       <View style={[styles.section, { marginBottom: 40 }]}>
         <View style={styles.aboutCard}>
           <View style={styles.aboutLogo}><Text style={styles.aboutLogoText}>R</Text></View>
-          <Text style={styles.aboutName}>ZUNDE RaMambo</Text>
+          <Text style={styles.aboutName}>PFUMA</Text>
           <Text style={styles.aboutTagline}>Zimbabwe's Livestock Intelligence Platform</Text>
           <Text style={styles.aboutDesc}>Built by Arnold Mapindu &amp; Addy · 2026{'\n'}React Native (Expo) · Flask API · MySQL</Text>
           <View style={styles.stakeholderRow}>

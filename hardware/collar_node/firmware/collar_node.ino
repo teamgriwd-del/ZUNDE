@@ -1,6 +1,6 @@
 /**
- * RaMambo Collar Node CN-01  — Firmware v1.0
- * ZUNDE Livestock Monitoring System
+ * PFUMA Collar Node CN-01  — Firmware v1.0
+ * PFUMA Livestock Monitoring System
  *
  * Hardware: ESP32-WROOM-32
  * Sensors : DS18B20 (temp) | MAX30102 (HR) | MPU-6050 (IMU) | NEO-6M (GPS)
@@ -34,7 +34,7 @@
 #include <ArduinoJson.h>
 
 // ═══════════════════════════════════════════════════════════════════════
-//  PIN MAP  (matches RAMAMBO_HARDWARE_DESIGN.md CN-01)
+//  PIN MAP  (matches HARDWARE_DESIGN.md CN-01)
 // ═══════════════════════════════════════════════════════════════════════
 #define PIN_ONE_WIRE     4
 #define PIN_LORA_NSS     5
@@ -62,10 +62,13 @@
 #define LORA_CR            5         // Coding rate 4/5
 #define LORA_TX_POWER      17        // dBm (max 20)
 
-// Collar identity — change per animal
-#define COLLAR_ID          "COL-007"
-#define ANIMAL_NAME        "Bessie"
-#define ANIMAL_TAG         "ZIM-882"
+// Collar identity — REPLACE before flashing each collar. This is the device
+// serial you'll type into the app's IoT tab ("Paired Devices" panel) to claim
+// this collar under your PFUMA account and attach it to the matching animal.
+// Give every collar a unique ID, e.g. "CN-<number>-<YourFarmCode>".
+#define COLLAR_ID          "CN-001-YOURFARM"
+#define ANIMAL_NAME        "YOUR_ANIMAL_NAME"
+#define ANIMAL_TAG         "YOUR_ANIMAL_TAG_ID"
 
 // Safe zone (home paddock GPS coordinates)
 #define SAFE_LAT          -17.3601f
@@ -140,7 +143,7 @@ int           beatAvg      = 0;
 // ═══════════════════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("\n=== RaMambo Collar Node CN-01 ==="));
+  Serial.println(F("\n=== PFUMA Collar Node CN-01 ==="));
   Serial.printf("Collar: %s  Animal: %s  Tag: %s\n",
                 COLLAR_ID, ANIMAL_NAME, ANIMAL_TAG);
 

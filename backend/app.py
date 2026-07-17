@@ -1,33 +1,332 @@
-from flask import Flask, jsonify, request
+import os
+import functools
+import datetime
+
+from flask import Flask, jsonify, request, g, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import pymysql
+import bcrypt
+import jwt
 
 app = Flask(__name__)
 CORS(app)
+
+# ── CONFIG ───────────────────────────────────────────────────────
+SECRET_KEY = os.environ.get('PFUMA_SECRET_KEY')
+if not SECRET_KEY:
+    SECRET_KEY = 'dev-insecure-secret-change-me'
+    print("[WARNING] PFUMA_SECRET_KEY not set - using an insecure dev default. "
+          "Set the PFUMA_SECRET_KEY environment variable before deploying.")
+
+TOKEN_TTL_HOURS = 24 * 7  # 1 week
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+ALLOWED_DOC_EXT = {'.pdf', '.jpg', '.jpeg', '.png'}
+
+# Roles that are not self-service — provisioned by an existing Police officer.
+ADMIN_PROVISIONED_ROLES = {'Police'}
+
 
 def get_db():
     return pymysql.connect(
         host='localhost',
         user='root',
         password='',
-        database='zunde',
+        database='pfuma',
+        charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
+
+
+# ── AUTH HELPERS ─────────────────────────────────────────────────
+def issue_token(user):
+    payload = {
+        'user_id': user['id'],
+        'role': user['role'],
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=TOKEN_TTL_HOURS),
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+
+def require_auth(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({"error": "Missing or malformed Authorization header"}), 401
+        token = auth_header[len('Bearer '):]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Session expired — please log in again"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Invalid session token"}), 401
+
+        db = get_db()
+        c = db.cursor()
+        c.execute("SELECT * FROM users WHERE id = %s", (payload['user_id'],))
+        user = c.fetchone()
+        db.close()
+        if not user:
+            return jsonify({"error": "User no longer exists"}), 401
+        g.current_user = user
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def require_role(*roles):
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            if g.current_user['role'] not in roles:
+                return jsonify({"error": f"This action requires one of: {', '.join(roles)}"}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def require_verified(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if g.current_user['verification_status'] != 'verified':
+            return jsonify({"error": "Your account is still pending verification. This action is unlocked once Police/DVS review is complete."}), 403
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def public_user_view(user, requester):
+    """Redacts a user row to what `requester` is allowed to see about `user`."""
+    is_self = requester and requester['id'] == user['id']
+    is_police = requester and requester['role'] == 'Police'
+    is_reviewing_vet = (
+        requester and requester['role'] == 'Veterinarian'
+        and requester['verification_status'] == 'verified'
+        and user['role'] == 'Veterinarian'
+    )
+    full_access = is_self or is_police or is_reviewing_vet
+
+    base = {
+        'id': user['id'], 'full_name': user['full_name'], 'role': user['role'],
+        'org_name': user['org_name'], 'province': user['province'], 'district': user['district'],
+    }
+    # Business-facing roles publish contact info as part of their function on the
+    # platform; Farmers and Police do not (contact happens via listings/messenger).
+    if user['role'] in ('Veterinarian', 'Supplier', 'Retailer'):
+        base['phone'] = user['phone']
+        base['speciality'] = user.get('speciality')
+        base['supply_categories'] = user.get('supply_categories')
+        base['trading_areas'] = user.get('trading_areas')
+
+    if full_access:
+        base.update({
+            'phone': user['phone'], 'email': user['email'], 'address': user['address'],
+            'farm_size_ha': user.get('farm_size_ha'), 'species_farmed': user.get('species_farmed'),
+            'license_number': user.get('license_number'), 'business_reg': user.get('business_reg'),
+            'badge_number': user.get('badge_number'), 'station': user.get('station'),
+            'jurisdiction_province': user.get('jurisdiction_province'),
+            'verification_status': user.get('verification_status'),
+            'verification_notes': user.get('verification_notes'),
+            'created_at': str(user.get('created_at')),
+        })
+    return base
+
+
+def save_upload(file_storage, user_id, doctype):
+    """Saves an uploaded document under uploads/<user_id>/<doctype><ext> and
+    returns the relative path stored in the DB."""
+    if not file_storage or not file_storage.filename:
+        return None
+    ext = os.path.splitext(secure_filename(file_storage.filename))[1].lower()
+    if ext not in ALLOWED_DOC_EXT:
+        raise ValueError(f"Unsupported file type '{ext}' — use PDF, JPG, or PNG")
+    user_dir = os.path.join(UPLOAD_DIR, str(user_id))
+    os.makedirs(user_dir, exist_ok=True)
+    filename = f"{doctype}{ext}"
+    file_storage.save(os.path.join(user_dir, filename))
+    return f"{user_id}/{filename}"
+
 
 # ── HEALTH CHECK ──────────────────────────────────────────────
 @app.route('/')
 def home():
-    return jsonify({"message": "ZUNDE API is running ✅", "version": "2.0"})
+    return jsonify({"message": "PFUMA API is running ✅", "version": "3.0"})
+
+
+# ── AUTHENTICATION ───────────────────────────────────────────────
+@app.route('/auth/register', methods=['POST'])
+def register():
+    d = request.form
+    role = d.get('role', 'Farmer')
+    if role in ADMIN_PROVISIONED_ROLES:
+        return jsonify({"error": "Police accounts are provisioned by an existing verified officer, not self-service. Contact ZRP/DVS liaison."}), 403
+
+    full_name = d.get('full_name', '').strip()
+    phone = d.get('phone', '').strip()
+    password = d.get('password', '')
+    if not full_name or not phone or len(password) < 8:
+        return jsonify({"error": "full_name, phone, and a password of at least 8 characters are required"}), 400
+
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM users WHERE phone = %s", (phone,))
+    if c.fetchone():
+        db.close()
+        return jsonify({"error": "An account with this phone number already exists"}), 409
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    c.execute("""
+        INSERT INTO users (full_name, phone, email, role, org_name, province, district, address,
+            farm_size_ha, species_farmed, license_number, speciality, business_reg, supply_categories,
+            trading_areas, password_hash, verification_status)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')
+    """, (
+        full_name, phone, d.get('email', ''), role,
+        d.get('org_name', ''), d.get('province', ''), d.get('district', ''), d.get('address', ''),
+        d.get('farm_size_ha') or None, d.get('species_farmed', ''),
+        d.get('license_number', ''), d.get('speciality', ''),
+        d.get('business_reg', ''), d.get('supply_categories', ''), d.get('trading_areas', ''),
+        password_hash,
+    ))
+    user_id = c.lastrowid
+
+    try:
+        id_path = save_upload(request.files.get('id_document'), user_id, 'id')
+        cred_path = save_upload(request.files.get('credential_document'), user_id, 'credential')
+        if id_path or cred_path:
+            c.execute("UPDATE users SET id_document_path=%s, credential_document_path=%s WHERE id=%s",
+                      (id_path, cred_path, user_id))
+    except ValueError as e:
+        db.rollback(); db.close()
+        return jsonify({"error": str(e)}), 400
+
+    db.commit()
+    c.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = c.fetchone()
+    db.close()
+    return jsonify({
+        "token": issue_token(user),
+        "user": public_user_view(user, user),
+        "message": "Account created — pending verification review before you get full access."
+    }), 201
+
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    d = request.json or {}
+    phone = d.get('phone', '').strip()
+    password = d.get('password', '')
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT * FROM users WHERE phone = %s", (phone,))
+    user = c.fetchone()
+    db.close()
+    if not user or not user['password_hash'] or not bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
+        return jsonify({"error": "Invalid phone number or password"}), 401
+    return jsonify({"token": issue_token(user), "user": public_user_view(user, user)})
+
+
+@app.route('/auth/me', methods=['GET'])
+@require_auth
+def me():
+    return jsonify(public_user_view(g.current_user, g.current_user))
+
+
+# ── SIGNUP VERIFICATION QUEUE ─────────────────────────────────────
+@app.route('/verifications', methods=['GET'])
+@require_auth
+def get_verifications():
+    requester = g.current_user
+    status = request.args.get('status', 'pending')
+    db = get_db()
+    c = db.cursor()
+    if requester['role'] == 'Police':
+        c.execute("SELECT id, full_name, role, org_name, province, id_document_path, credential_document_path, created_at "
+                   "FROM users WHERE verification_status=%s AND role != 'Veterinarian' ORDER BY created_at ASC", (status,))
+    elif requester['role'] == 'Veterinarian' and requester['verification_status'] == 'verified':
+        c.execute("SELECT id, full_name, role, org_name, province, id_document_path, credential_document_path, created_at "
+                   "FROM users WHERE verification_status=%s AND role='Veterinarian' AND id != %s ORDER BY created_at ASC",
+                   (status, requester['id']))
+    else:
+        db.close()
+        return jsonify({"error": "Only Police (or a verified Veterinarian reviewing peers) can view this queue"}), 403
+    rows = c.fetchall()
+    db.close()
+    return jsonify(rows)
+
+
+@app.route('/verifications/<int:user_id>', methods=['PATCH'])
+@require_auth
+def resolve_verification(user_id):
+    requester = g.current_user
+    d = request.json or {}
+    verification_status = d.get('verification_status')
+    if verification_status not in ('verified', 'rejected'):
+        return jsonify({"error": "verification_status must be 'verified' or 'rejected'"}), 400
+
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT role FROM users WHERE id=%s", (user_id,))
+    target = c.fetchone()
+    if not target:
+        db.close(); return jsonify({"error": "User not found"}), 404
+
+    authorized = (
+        (requester['role'] == 'Police' and target['role'] != 'Veterinarian') or
+        (requester['role'] == 'Veterinarian' and requester['verification_status'] == 'verified' and target['role'] == 'Veterinarian')
+    )
+    if not authorized:
+        db.close(); return jsonify({"error": "You are not authorized to review this applicant"}), 403
+
+    c.execute("UPDATE users SET verification_status=%s, verified_by=%s, verification_notes=%s WHERE id=%s",
+              (verification_status, requester['id'], d.get('verification_notes'), user_id))
+    db.commit()
+    db.close()
+    return jsonify({"verification_status": verification_status, "message": f"Applicant {verification_status} ✅"})
+
+
+@app.route('/documents/<int:user_id>/<doctype>', methods=['GET'])
+@require_auth
+def get_document(user_id, doctype):
+    if doctype not in ('id', 'credential'):
+        return jsonify({"error": "doctype must be 'id' or 'credential'"}), 400
+    requester = g.current_user
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT role, id_document_path, credential_document_path FROM users WHERE id=%s", (user_id,))
+    target = c.fetchone()
+    db.close()
+    if not target:
+        return jsonify({"error": "User not found"}), 404
+
+    allowed = (
+        requester['id'] == user_id or
+        requester['role'] == 'Police' or
+        (requester['role'] == 'Veterinarian' and requester['verification_status'] == 'verified' and target['role'] == 'Veterinarian')
+    )
+    if not allowed:
+        return jsonify({"error": "Not authorized to view this document"}), 403
+
+    path = target['id_document_path'] if doctype == 'id' else target['credential_document_path']
+    if not path:
+        return jsonify({"error": "No document on file"}), 404
+    # path is stored as "<user_id>/<filename>" — serve relative to UPLOAD_DIR only.
+    directory, filename = os.path.split(path)
+    return send_from_directory(os.path.join(UPLOAD_DIR, directory), filename)
+
 
 # ── USERS ─────────────────────────────────────────────────────
 @app.route('/users', methods=['GET'])
+@require_auth
 def get_users():
+    requester = g.current_user
     db = get_db()
     c = db.cursor()
     role = request.args.get('role')
     province = request.args.get('province')
     q = request.args.get('q', '')
-    sql = "SELECT id,full_name,phone,email,role,org_name,province,district,license_number,speciality,supply_categories,trading_areas FROM users WHERE 1=1"
+    sql = "SELECT * FROM users WHERE 1=1"
     params = []
     if role:
         sql += " AND role = %s"; params.append(role)
@@ -36,40 +335,44 @@ def get_users():
     if q:
         sql += " AND (full_name LIKE %s OR org_name LIKE %s OR province LIKE %s)"
         params += [f'%{q}%', f'%{q}%', f'%{q}%']
+    # Police officers aren't listed in the general directory — they're reached
+    # only through the clearance/verification workflow, not public search.
+    if requester['role'] != 'Police':
+        sql += " AND role != 'Police'"
     c.execute(sql, params)
     users = c.fetchall()
     db.close()
-    return jsonify(users)
+    return jsonify([public_user_view(u, requester) for u in users])
+
 
 @app.route('/users', methods=['POST'])
+@require_auth
+@require_role('Police')
 def create_user():
+    """Administrative user provisioning — used by Police to create another
+    verified officer account (Police signups are not self-service)."""
     d = request.json
     db = get_db()
     c = db.cursor()
+    password_hash = bcrypt.hashpw((d.get('password') or os.urandom(8).hex()).encode(), bcrypt.gensalt()).decode()
     c.execute("""
         INSERT INTO users (full_name, phone, email, role, org_name, province, district, address,
-            farm_size_ha, species_farmed, license_number, speciality, business_reg, supply_categories, trading_areas, avatar_seed)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            badge_number, station, jurisdiction_province, password_hash, verification_status, verified_by)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'verified',%s)
     """, (
-        d.get('full_name') or d.get('name',''),
-        d.get('phone',''), d.get('email',''), d.get('role','Farmer'),
-        d.get('org_name') or d.get('org',''),
-        d.get('province',''), d.get('district',''), d.get('address',''),
-        d.get('farm_size_ha') or d.get('farmSize') or None,
-        ','.join(d.get('species', [])) if isinstance(d.get('species'), list) else d.get('species',''),
-        d.get('license_number') or d.get('licenseNumber',''),
-        d.get('speciality',''),
-        d.get('business_reg') or d.get('businessReg',''),
-        ','.join(d.get('supply_categories',[])) if isinstance(d.get('supply_categories'), list) else d.get('supplyCategories',''),
-        d.get('trading_areas') or d.get('tradingAreas',''),
-        d.get('name','')
+        d.get('full_name', ''), d.get('phone', ''), d.get('email', ''), d.get('role', 'Police'),
+        d.get('org_name', ''), d.get('province', ''), d.get('district', ''), d.get('address', ''),
+        d.get('badge_number', ''), d.get('station', ''), d.get('jurisdiction_province', ''),
+        password_hash, g.current_user['id'],
     ))
     db.commit()
     user_id = c.lastrowid
     db.close()
-    return jsonify({"id": user_id, "message": "User registered ✅"})
+    return jsonify({"id": user_id, "message": "User provisioned ✅"})
+
 
 @app.route('/users/<int:user_id>', methods=['GET'])
+@require_auth
 def get_user(user_id):
     db = get_db()
     c = db.cursor()
@@ -78,35 +381,44 @@ def get_user(user_id):
     db.close()
     if not user:
         return jsonify({"error": "User not found"}), 404
-    return jsonify(user)
+    if user['role'] == 'Police' and g.current_user['role'] != 'Police' and g.current_user['id'] != user_id:
+        return jsonify({"error": "User not found"}), 404
+    return jsonify(public_user_view(user, g.current_user))
+
 
 # ── ANIMALS ───────────────────────────────────────────────────
 @app.route('/animals', methods=['GET'])
+@require_auth
 def get_animals():
+    requester = g.current_user
     db = get_db()
     c = db.cursor()
-    owner = request.args.get('owner_id')
     for_sale = request.args.get('for_sale')
     sql = """
         SELECT a.*, u.full_name as owner_name, u.phone as owner_phone, u.province as owner_province
         FROM animals a JOIN users u ON a.owner_id = u.id WHERE 1=1
     """
     params = []
-    if owner:
-        sql += " AND a.owner_id = %s"; params.append(owner)
+    # Oversight roles (Vet, Police) can see across farms; everyone else only
+    # ever sees their own herd — animal/health data is private by default.
+    if requester['role'] not in ('Veterinarian', 'Police'):
+        sql += " AND a.owner_id = %s"; params.append(requester['id'])
     if for_sale is not None:
         sql += " AND a.for_sale = %s"; params.append(1 if for_sale == 'true' else 0)
     sql += " ORDER BY a.created_at DESC"
     c.execute(sql, params)
     animals = c.fetchall()
-    # attach weight history
     for a in animals:
         c.execute("SELECT month_label, weight_kg FROM weight_history WHERE animal_id = %s ORDER BY id", (a['id'],))
         a['weight_history'] = c.fetchall()
     db.close()
     return jsonify(animals)
 
+
 @app.route('/animals', methods=['POST'])
+@require_auth
+@require_role('Farmer')
+@require_verified
 def add_animal():
     d = request.json
     db = get_db()
@@ -116,16 +428,15 @@ def add_animal():
             sire_id, dam_id, birth_weight, current_weight, image_url, for_sale)
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
-        d['owner_id'], d['name'], d['species'], d.get('breed',''),
-        d.get('birth_date') or d.get('birthDate'), d.get('tag_id') or d.get('tagId',''),
-        d.get('brand_id') or d.get('brandId',''), d.get('sire_id') or d.get('sireId',''),
-        d.get('dam_id') or d.get('damId',''),
-        d.get('birth_weight') or d.get('birthWeight',0),
-        d.get('current_weight') or d.get('currentWeight',0),
-        d.get('image_url') or d.get('imageUrl',''), d.get('for_sale', False)
+        g.current_user['id'], d['name'], d['species'], d.get('breed', ''),
+        d.get('birth_date') or d.get('birthDate'), d.get('tag_id') or d.get('tagId', ''),
+        d.get('brand_id') or d.get('brandId', ''), d.get('sire_id') or d.get('sireId', ''),
+        d.get('dam_id') or d.get('damId', ''),
+        d.get('birth_weight') or d.get('birthWeight', 0),
+        d.get('current_weight') or d.get('currentWeight', 0),
+        d.get('image_url') or d.get('imageUrl', ''), d.get('for_sale', False)
     ))
     animal_id = c.lastrowid
-    # initial weight history entry
     bw = d.get('birth_weight') or d.get('birthWeight', 0)
     if bw:
         c.execute("INSERT INTO weight_history (animal_id, month_label, weight_kg) VALUES (%s,'Initial',%s)", (animal_id, bw))
@@ -133,10 +444,18 @@ def add_animal():
     db.close()
     return jsonify({"id": animal_id, "message": "Animal registered ✅"})
 
+
 @app.route('/animals/<int:animal_id>/sale', methods=['PATCH'])
+@require_auth
 def toggle_sale(animal_id):
     db = get_db()
     c = db.cursor()
+    c.execute("SELECT owner_id FROM animals WHERE id = %s", (animal_id,))
+    row = c.fetchone()
+    if not row:
+        db.close(); return jsonify({"error": "Animal not found"}), 404
+    if row['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "You can only list your own animals"}), 403
     c.execute("UPDATE animals SET for_sale = NOT for_sale WHERE id = %s", (animal_id,))
     db.commit()
     c.execute("SELECT for_sale FROM animals WHERE id = %s", (animal_id,))
@@ -144,33 +463,165 @@ def toggle_sale(animal_id):
     db.close()
     return jsonify({"for_sale": bool(row['for_sale']), "message": "Listing status updated ✅"})
 
+
+# ── IOT DEVICES ───────────────────────────────────────────────
+# Pairing bookkeeping for physical collars/base stations — see IOT_HARDWARE_GUIDE.md
+# for how a farmer physically sets up the hardware and finds their device's serial.
+@app.route('/iot-devices', methods=['GET'])
+@require_auth
+def get_iot_devices():
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        SELECT d.*, a.name AS animal_name, a.species
+        FROM iot_devices d LEFT JOIN animals a ON d.animal_id = a.id
+        WHERE d.owner_id = %s ORDER BY d.paired_at DESC
+    """, (g.current_user['id'],))
+    rows = c.fetchall()
+    db.close()
+    return jsonify(rows)
+
+
+@app.route('/iot-devices/pair', methods=['POST'])
+@require_auth
+@require_role('Farmer')
+def pair_iot_device():
+    d = request.json
+    serial = (d.get('device_serial') or '').strip()
+    if not serial:
+        return jsonify({"error": "device_serial is required"}), 400
+    animal_id = d.get('animal_id')
+
+    db = get_db()
+    c = db.cursor()
+    if animal_id:
+        c.execute("SELECT owner_id FROM animals WHERE id=%s", (animal_id,))
+        animal = c.fetchone()
+        if not animal or animal['owner_id'] != g.current_user['id']:
+            db.close(); return jsonify({"error": "You can only pair a device to your own animal"}), 403
+
+    c.execute("SELECT owner_id FROM iot_devices WHERE device_serial=%s", (serial,))
+    existing = c.fetchone()
+    if existing:
+        db.close()
+        if existing['owner_id'] == g.current_user['id']:
+            return jsonify({"error": "You've already paired this device"}), 409
+        return jsonify({"error": "This device serial is already claimed by another account"}), 409
+
+    c.execute("INSERT INTO iot_devices (device_serial, animal_id, owner_id) VALUES (%s,%s,%s)",
+              (serial, animal_id, g.current_user['id']))
+    device_id = c.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": device_id, "message": "Device paired ✅"})
+
+
+@app.route('/iot-devices/<int:device_id>', methods=['PATCH'])
+@require_auth
+def update_iot_device(device_id):
+    d = request.json
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT owner_id FROM iot_devices WHERE id=%s", (device_id,))
+    device = c.fetchone()
+    if not device:
+        db.close(); return jsonify({"error": "Device not found"}), 404
+    if device['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "You can only manage your own devices"}), 403
+
+    animal_id = d.get('animal_id')
+    if animal_id:
+        c.execute("SELECT owner_id FROM animals WHERE id=%s", (animal_id,))
+        animal = c.fetchone()
+        if not animal or animal['owner_id'] != g.current_user['id']:
+            db.close(); return jsonify({"error": "You can only pair a device to your own animal"}), 403
+
+    c.execute("UPDATE iot_devices SET animal_id=%s WHERE id=%s", (animal_id, device_id))
+    db.commit()
+    db.close()
+    return jsonify({"message": "Device updated ✅"})
+
+
+# Telemetry intake for real base-station hardware (see base_station.ino).
+# Authenticated by device serial rather than a user JWT, since firmware can't
+# hold a farmer's login session. Currently just validates + acknowledges —
+# the in-app IoT Monitor dashboard still visualizes simulated data; wiring
+# this into a live reading history is tracked as future work.
+@app.route('/api/iot/telemetry', methods=['POST'])
+def ingest_telemetry():
+    d = request.json or {}
+    station_id = request.headers.get('X-Station-ID') or d.get('station_id')
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM iot_devices WHERE device_serial=%s", (station_id,))
+    device = c.fetchone()
+    db.close()
+    if not device:
+        return jsonify({"error": "Unrecognized station — pair this device serial in the app first"}), 404
+    return jsonify({"received": True})
+
+
+@app.route('/api/iot/alert', methods=['POST'])
+def ingest_alert():
+    d = request.json or {}
+    station_id = request.headers.get('X-Station-ID') or d.get('station_id')
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id FROM iot_devices WHERE device_serial=%s", (station_id,))
+    device = c.fetchone()
+    db.close()
+    if not device:
+        return jsonify({"error": "Unrecognized station — pair this device serial in the app first"}), 404
+    return jsonify({"received": True})
+
+
 # ── HEALTH EVENTS ─────────────────────────────────────────────
 @app.route('/animals/<int:animal_id>/health', methods=['GET'])
+@require_auth
 def get_health(animal_id):
     db = get_db()
     c = db.cursor()
+    c.execute("SELECT owner_id FROM animals WHERE id = %s", (animal_id,))
+    animal = c.fetchone()
+    if not animal:
+        db.close(); return jsonify({"error": "Animal not found"}), 404
+    if g.current_user['role'] not in ('Veterinarian', 'Police') and animal['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "Not authorized to view this animal's health records"}), 403
     c.execute("SELECT * FROM health_events WHERE animal_id = %s ORDER BY event_date DESC", (animal_id,))
     events = c.fetchall()
     db.close()
     return jsonify(events)
 
+
 @app.route('/health-events', methods=['POST'])
+@require_auth
+@require_role('Farmer', 'Veterinarian')
 def add_health_event():
     d = request.json
     db = get_db()
     c = db.cursor()
+    c.execute("SELECT owner_id FROM animals WHERE id = %s", (d['animal_id'],))
+    animal = c.fetchone()
+    if not animal:
+        db.close(); return jsonify({"error": "Animal not found"}), 404
+    if g.current_user['role'] == 'Farmer' and animal['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "You can only log events for your own animals"}), 403
     c.execute("""
         INSERT INTO health_events (animal_id, animal_name, event_type, notes, performed_by)
         VALUES (%s,%s,%s,%s,%s)
-    """, (d['animal_id'], d.get('animal_name',''), d['event_type'], d.get('notes',''), d.get('performed_by')))
+    """, (d['animal_id'], d.get('animal_name', ''), d['event_type'], d.get('notes', ''), g.current_user['id']))
     db.commit()
     event_id = c.lastrowid
     db.close()
     return jsonify({"id": event_id, "message": "Health event logged ✅"})
 
+
 # ── MEDICINE INVENTORY ────────────────────────────────────────
 @app.route('/inventory/<int:owner_id>', methods=['GET'])
+@require_auth
 def get_inventory(owner_id):
+    if g.current_user['id'] != owner_id and g.current_user['role'] != 'Veterinarian':
+        return jsonify({"error": "Not authorized to view this medicine cabinet"}), 403
     db = get_db()
     c = db.cursor()
     c.execute("SELECT * FROM medicine_inventory WHERE owner_id = %s", (owner_id,))
@@ -178,24 +629,30 @@ def get_inventory(owner_id):
     db.close()
     return jsonify(items)
 
+
 @app.route('/inventory/<int:item_id>/deduct', methods=['PATCH'])
+@require_auth
 def deduct_inventory(item_id):
     d = request.json
     dose = float(d.get('dose', 0))
     db = get_db()
     c = db.cursor()
-    c.execute("SELECT stock FROM medicine_inventory WHERE id = %s", (item_id,))
+    c.execute("SELECT stock, owner_id FROM medicine_inventory WHERE id = %s", (item_id,))
     row = c.fetchone()
     if not row:
         db.close(); return jsonify({"error": "Item not found"}), 404
+    if row['owner_id'] != g.current_user['id'] and g.current_user['role'] != 'Veterinarian':
+        db.close(); return jsonify({"error": "Not authorized to update this medicine cabinet"}), 403
     new_stock = max(0, float(row['stock']) - dose)
     c.execute("UPDATE medicine_inventory SET stock = %s WHERE id = %s", (new_stock, item_id))
     db.commit()
     db.close()
     return jsonify({"new_stock": new_stock, "message": f"{dose}ml deducted ✅"})
 
+
 # ── MARKETPLACE ───────────────────────────────────────────────
 @app.route('/listings', methods=['GET'])
+@require_auth
 def get_listings():
     db = get_db()
     c = db.cursor()
@@ -217,25 +674,184 @@ def get_listings():
     db.close()
     return jsonify(listings)
 
+
 @app.route('/listings', methods=['POST'])
+@require_auth
+@require_verified
 def add_listing():
     d = request.json
+    category = d.get('category', 'livestock')
+    animal_id = d.get('animal_id')
+
+    if animal_id:
+        db = get_db(); c = db.cursor()
+        c.execute("SELECT owner_id FROM animals WHERE id=%s", (animal_id,))
+        animal = c.fetchone(); db.close()
+        if not animal or animal['owner_id'] != g.current_user['id']:
+            return jsonify({"error": "You can only list your own animals"}), 403
+
+    # Livestock listings tied to a specific animal must clear police review
+    # (ownership/brand papers checked) before they're visible on the marketplace.
+    needs_clearance = category == 'livestock' and animal_id
+    status = 'pending_clearance' if needs_clearance else 'available'
+
     db = get_db()
     c = db.cursor()
     c.execute("""
         INSERT INTO marketplace_listings
-            (user_id, animal_id, product_name, category, price, unit, quantity, location, description)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            (user_id, animal_id, product_name, category, price, unit, quantity, location, description, status)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
-        d['user_id'], d.get('animal_id'), d['product_name'],
-        d.get('category','livestock'), d['price'], d.get('unit','head'),
-        d.get('quantity',1), d.get('location',''), d.get('description','')
+        g.current_user['id'], animal_id, d['product_name'],
+        category, d['price'], d.get('unit', 'head'),
+        d.get('quantity', 1), d.get('location', ''), d.get('description', ''), status
     ))
+    listing_id = c.lastrowid
+
+    if needs_clearance:
+        c.execute("""
+            INSERT INTO sale_clearances (animal_id, listing_id, seller_id, status)
+            VALUES (%s,%s,%s,'pending')
+        """, (animal_id, listing_id, g.current_user['id']))
+
     db.commit()
     db.close()
-    return jsonify({"message": "Listing added ✅"})
+    return jsonify({
+        "id": listing_id,
+        "status": status,
+        "message": "Listing submitted for police clearance ✅" if needs_clearance else "Listing added ✅"
+    })
+
+
+# ── SALE CLEARANCES ─────────────────────────────────────────────
+@app.route('/clearances', methods=['GET'])
+@require_auth
+@require_role('Police')
+def get_clearances():
+    db = get_db()
+    c = db.cursor()
+    status = request.args.get('status')
+    sql = """
+        SELECT sc.*, a.name AS animal_name, a.species, a.tag_id, a.brand_id,
+               ml.product_name, u.full_name AS seller_name, u.phone AS seller_phone
+        FROM sale_clearances sc
+        JOIN animals a ON sc.animal_id = a.id
+        JOIN users u   ON sc.seller_id = u.id
+        LEFT JOIN marketplace_listings ml ON sc.listing_id = ml.id
+        WHERE 1=1
+    """
+    params = []
+    if status:
+        sql += " AND sc.status = %s"; params.append(status)
+    sql += " ORDER BY sc.created_at ASC"
+    c.execute(sql, params)
+    rows = c.fetchall()
+    db.close()
+    return jsonify(rows)
+
+
+@app.route('/clearances', methods=['POST'])
+@require_auth
+def create_clearance():
+    d = request.json
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT owner_id FROM animals WHERE id=%s", (d['animal_id'],))
+    animal = c.fetchone()
+    if not animal or animal['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "You can only request clearance for your own animals"}), 403
+    c.execute("""
+        INSERT INTO sale_clearances (animal_id, listing_id, seller_id, status)
+        VALUES (%s,%s,%s,'pending')
+    """, (d['animal_id'], d.get('listing_id'), g.current_user['id']))
+    clearance_id = c.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": clearance_id, "message": "Clearance requested ✅"})
+
+
+@app.route('/clearances/<int:clearance_id>', methods=['PATCH'])
+@require_auth
+@require_role('Police')
+def resolve_clearance(clearance_id):
+    d = request.json
+    status = d.get('status')
+    if status not in ('cleared', 'rejected'):
+        return jsonify({"error": "status must be 'cleared' or 'rejected'"}), 400
+
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        UPDATE sale_clearances
+        SET status=%s, movement_permit_number=%s, officer_id=%s, notes=%s, resolved_at=NOW()
+        WHERE id=%s
+    """, (status, d.get('movement_permit_number'), g.current_user['id'], d.get('notes'), clearance_id))
+
+    c.execute("SELECT listing_id FROM sale_clearances WHERE id=%s", (clearance_id,))
+    row = c.fetchone()
+    if row and row['listing_id']:
+        new_listing_status = 'available' if status == 'cleared' else 'withdrawn'
+        c.execute("UPDATE marketplace_listings SET status=%s WHERE id=%s", (new_listing_status, row['listing_id']))
+
+    db.commit()
+    db.close()
+    return jsonify({"status": status, "message": f"Sale {status} ✅"})
+
+
+# ── MARKETPLACE BIDS ─────────────────────────────────────────────
+@app.route('/listings/<int:listing_id>/bid', methods=['POST'])
+@require_auth
+@require_verified
+def place_bid(listing_id):
+    d = request.json
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT status, category FROM marketplace_listings WHERE id=%s", (listing_id,))
+    listing = c.fetchone()
+    if not listing:
+        db.close(); return jsonify({"error": "Listing not found"}), 404
+    if listing['category'] == 'livestock' and listing['status'] != 'available':
+        db.close()
+        return jsonify({"error": "This listing has not been cleared by police yet — bidding is disabled until clearance is granted."}), 409
+
+    c.execute("""
+        INSERT INTO bids (listing_id, bidder_id, amount, message)
+        VALUES (%s,%s,%s,%s)
+    """, (listing_id, g.current_user['id'], d['amount'], d.get('message', '')))
+    bid_id = c.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": bid_id, "message": "Bid submitted ✅"})
+
+
+@app.route('/listings/<int:listing_id>/bids', methods=['GET'])
+@require_auth
+def get_bids(listing_id):
+    requester = g.current_user
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT user_id FROM marketplace_listings WHERE id=%s", (listing_id,))
+    listing = c.fetchone()
+    if not listing:
+        db.close(); return jsonify({"error": "Listing not found"}), 404
+    sql = """
+        SELECT b.*, u.full_name AS bidder_name, u.phone AS bidder_phone
+        FROM bids b JOIN users u ON b.bidder_id = u.id
+        WHERE b.listing_id = %s
+    """
+    params = [listing_id]
+    # Only the listing owner or Police see every bid; a bidder sees just their own.
+    if requester['id'] != listing['user_id'] and requester['role'] != 'Police':
+        sql += " AND b.bidder_id = %s"; params.append(requester['id'])
+    sql += " ORDER BY b.created_at DESC"
+    c.execute(sql, params)
+    rows = c.fetchall()
+    db.close()
+    return jsonify(rows)
+
 
 # ── FEED ANALYZER ─────────────────────────────────────────────
+# Nutrition reference data — public, not user-specific, so no auth required.
 @app.route('/feed', methods=['GET'])
 def get_all_feeds():
     db = get_db()
@@ -244,6 +860,7 @@ def get_all_feeds():
     feeds = c.fetchall()
     db.close()
     return jsonify(feeds)
+
 
 @app.route('/feed/search', methods=['GET'])
 def search_feed():
@@ -255,9 +872,13 @@ def search_feed():
     db.close()
     return jsonify(results)
 
+
 # ── DASHBOARD ─────────────────────────────────────────────────
 @app.route('/dashboard/<int:user_id>', methods=['GET'])
+@require_auth
 def get_dashboard(user_id):
+    if user_id != g.current_user['id'] and g.current_user['role'] != 'Police':
+        return jsonify({"error": "Not authorized to view this dashboard"}), 403
     db = get_db()
     c = db.cursor()
     c.execute("SELECT COUNT(*) as total FROM animals WHERE owner_id = %s", (user_id,))
@@ -277,13 +898,14 @@ def get_dashboard(user_id):
         "total_value":  total_value
     })
 
+
 # ── VET CASES ─────────────────────────────────────────────────
 @app.route('/cases', methods=['GET'])
+@require_auth
 def get_cases():
+    requester = g.current_user
     db = get_db()
     c = db.cursor()
-    farmer = request.args.get('farmer_id')
-    vet = request.args.get('vet_id')
     sql = """
         SELECT vc.*, u.full_name as farmer_name, u.phone as farmer_phone,
                a.name as animal_name
@@ -293,12 +915,18 @@ def get_cases():
         WHERE 1=1
     """
     params = []
-    if farmer: sql += " AND vc.farmer_id = %s"; params.append(farmer)
-    if vet:    sql += " AND vc.vet_id = %s"; params.append(vet)
+    if requester['role'] == 'Farmer':
+        sql += " AND vc.farmer_id = %s"; params.append(requester['id'])
+    elif requester['role'] == 'Veterinarian':
+        sql += " AND (vc.vet_id = %s OR vc.vet_id IS NULL)"; params.append(requester['id'])
+    elif requester['role'] != 'Police':
+        db.close()
+        return jsonify({"error": "Not authorized to view cases"}), 403
     c.execute(sql, params)
     cases = c.fetchall()
     db.close()
     return jsonify(cases)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -25,7 +25,7 @@ const NLP_RULES = [
   { keywords: ['worth', 'value', 'price', 'money', 'cost'],
     reply: 'Animal value depends on species, weight and breed. Cattle typically value at USD $500 base + $1.50 per kg. Open the Marketplace to see current listings.' },
   { keywords: ['thief', 'stole', 'security', 'mbavha', 'where'],
-    reply: 'RaMambo monitors movement 24/7. My sensors detect a "Theft Signature" — rapid movement outside the safe zone. You will be alerted instantly when this happens.' },
+    reply: 'PFUMA monitors movement 24/7. My sensors detect a "Theft Signature" — rapid movement outside the safe zone. You will be alerted instantly when this happens.' },
   { keywords: ['sell', 'list', 'market', 'trade', 'buyer'],
     reply: 'To list an animal for sale: go to the Herd tab, tap an animal, and toggle "List for Sale". Retailers on the Marketplace will immediately see it and can place a bid.' },
   { keywords: ['vaccine', 'vaccin', 'inject', 'shot', 'fmd', 'anthrax'],
@@ -37,13 +37,13 @@ const NLP_RULES = [
   { keywords: ['vet', 'doctor', 'expert', 'dvs', 'consult'],
     reply: 'Tap the Vet Messenger screen to connect with licensed DVS officers. Dr. T. Moyo (Mashonaland West) is currently online.' },
   { keywords: ['help', 'what can', 'what do', 'unoitei', 'guide'],
-    reply: 'I am Jinda RaMambo, your royal herd messenger. I can:\n• Answer livestock health questions\n• Guide you to the right screen\n• Give herd valuation tips\n• Explain how ZUNDE works\n\nNdinogona kukubatsira kuchengetedza mhuka dzeRaMambo.' },
+    reply: 'I am Jinda, your farm assistant. I can:\n• Answer livestock health questions\n• Guide you to the right screen\n• Give herd valuation tips\n• Explain how PFUMA works\n\nNdinogona kukubatsira kuchengetedza mhuka dzako.' },
 ];
 
 function processNLP(text) {
   const t = text.toLowerCase();
   if (KNOWLEDGE.greetings.some(g => t.includes(g))) {
-    return 'Salutations! How can I serve you and your royal herd today?';
+    return 'Salutations! How can I serve you and your herd today?';
   }
   for (const rule of NLP_RULES) {
     if (rule.keywords.some(k => t.includes(k))) return rule.reply;
@@ -57,11 +57,11 @@ const now = () => {
   return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-export default function JindaRaMamboFAB() {
+export default function JindaFAB() {
   const [open, setOpen]       = useState(false);
   const [input, setInput]     = useState('');
   const [messages, setMessages] = useState([
-    { id: 1, from: 'ai', text: 'Mwauya nei? I am Jinda RaMambo, your loyal herd messenger. Ask me anything about livestock health, the marketplace, or how to navigate ZUNDE.', time: now() },
+    { id: 1, from: 'ai', text: 'Mwauya nei? I am Jinda, your loyal herd messenger. Ask me anything about livestock health, the marketplace, or how to navigate PFUMA.', time: now() },
   ]);
   const scrollRef  = useRef(null);
   const pulseAnim  = useRef(new Animated.Value(1)).current;
@@ -116,8 +116,8 @@ export default function JindaRaMamboFAB() {
                   <Text style={{ fontSize: 22 }}>🤖</Text>
                 </View>
                 <View>
-                  <Text style={s.headerName}>Jinda RaMambo</Text>
-                  <Text style={s.headerSub}>Royal Herd Messenger · Online</Text>
+                  <Text style={s.headerName}>Jinda</Text>
+                  <Text style={s.headerSub}>Farm Assistant · Online</Text>
                 </View>
               </View>
               <TouchableOpacity style={s.closeBtn} onPress={() => setOpen(false)} activeOpacity={0.8}>

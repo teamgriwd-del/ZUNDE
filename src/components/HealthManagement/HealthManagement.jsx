@@ -26,20 +26,20 @@ const statusStyle = (s) => {
   return 'bg-gray-50 border-gray-100';
 };
 const statusDot = (s) => {
-  if (s === 'Completed') return 'bg-zunde-green';
+  if (s === 'Completed') return 'bg-pfuma-green';
   if (s === 'Overdue')   return 'bg-red-500';
   if (s === 'Due Soon')  return 'bg-orange-400';
   return 'bg-gray-300';
 };
 const statusLabel = (s) => {
-  if (s === 'Completed') return 'text-zunde-green';
+  if (s === 'Completed') return 'text-pfuma-green';
   if (s === 'Overdue')   return 'text-red-600';
   if (s === 'Due Soon')  return 'text-orange-600';
   return 'text-gray-400';
 };
 
 // ── sub-components ─────────────────────────────────────────────────────────
-const SectionHeader = ({ icon: Icon, title, description, color = 'text-zunde-green' }) => (
+const SectionHeader = ({ icon: Icon, title, description, color = 'text-pfuma-green' }) => (
   <div className="flex items-start gap-3 mb-4">
     <div className={`p-2 rounded-xl bg-gray-50 ${color} shrink-0`}><Icon size={18} /></div>
     <div>
@@ -210,9 +210,9 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
       </div>
 
       {/* ── ANIMAL SELECTOR ── */}
-      <div className={`bg-white border-2 rounded-2xl p-5 transition ${selectedAnimal ? 'border-zunde-green' : 'border-gray-100'}`}>
+      <div className={`bg-white border-2 rounded-2xl p-5 transition ${selectedAnimal ? 'border-pfuma-green' : 'border-gray-100'}`}>
         <div className="flex items-center gap-2 mb-3">
-          <Tag size={14} className="text-zunde-green" />
+          <Tag size={14} className="text-pfuma-green" />
           <h3 className="text-sm font-black text-gray-800">Which animal are you managing?</h3>
         </div>
         {animals.length === 0 ? (
@@ -230,8 +230,8 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
                   onClick={() => { setSelectedAnimalId(String(a.id)); setGestationStart(''); }}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 transition text-left ${
                     String(selectedAnimalId) === String(a.id)
-                      ? 'bg-zunde-green text-white border-zunde-green shadow-md'
-                      : 'bg-gray-50 text-gray-600 border-gray-100 hover:border-zunde-green/40'
+                      ? 'bg-pfuma-green text-white border-pfuma-green shadow-md'
+                      : 'bg-gray-50 text-gray-600 border-gray-100 hover:border-pfuma-green/40'
                   }`}
                 >
                   <div>
@@ -308,7 +308,7 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
                         </div>
                         <div className={`rounded-xl p-3 ${lifecycle.isWeaned ? 'bg-green-50' : 'bg-blue-50'}`}>
                           <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Weaning</p>
-                          <p className={`text-sm font-black ${lifecycle.isWeaned ? 'text-zunde-green' : 'text-blue-600'}`}>
+                          <p className={`text-sm font-black ${lifecycle.isWeaned ? 'text-pfuma-green' : 'text-blue-600'}`}>
                             {lifecycle.isWeaned ? '✓ Complete' : `${lifecycle.daysUntilWeaning}d left`}
                           </p>
                         </div>
@@ -340,20 +340,20 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
                       id="gest-date"
                       type="date"
                       max={new Date().toISOString().split('T')[0]}
-                      className="w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent font-bold text-sm outline-none focus:border-zunde-green transition"
+                      className="w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent font-bold text-sm outline-none focus:border-pfuma-green transition"
                       value={gestationStart}
                       onChange={e => setGestationStart(e.target.value)}
                     />
 
                     {gestationInfo && (
                       <div className={`mt-3 p-4 rounded-2xl ${gestationInfo.isOverdue ? 'bg-red-50 border border-red-200' : gestationInfo.isUrgent ? 'bg-orange-50 border border-orange-200' : 'bg-green-50 border border-green-200'}`}>
-                        <p className={`text-[10px] font-black uppercase mb-1 ${gestationInfo.isOverdue ? 'text-red-600' : gestationInfo.isUrgent ? 'text-orange-600' : 'text-zunde-green'}`}>
+                        <p className={`text-[10px] font-black uppercase mb-1 ${gestationInfo.isOverdue ? 'text-red-600' : gestationInfo.isUrgent ? 'text-orange-600' : 'text-pfuma-green'}`}>
                           {gestationInfo.isOverdue ? '⚠ Overdue — Check Animal Now' : gestationInfo.isUrgent ? '🔔 Birth Imminent' : '🐄 Expected Birth Date'}
                         </p>
                         <div className="flex justify-between items-center">
                           <p className="text-sm font-black text-gray-800">{gestationInfo.date}</p>
                           <div className="text-right">
-                            <p className={`text-2xl font-black leading-none ${gestationInfo.isOverdue ? 'text-red-600' : gestationInfo.isUrgent ? 'text-orange-600' : 'text-zunde-green'}`}>
+                            <p className={`text-2xl font-black leading-none ${gestationInfo.isOverdue ? 'text-red-600' : gestationInfo.isUrgent ? 'text-orange-600' : 'text-pfuma-green'}`}>
                               {Math.abs(gestationInfo.daysRemaining)}
                             </p>
                             <p className="text-[10px] font-bold text-gray-400">{gestationInfo.isOverdue ? 'days over' : 'days left'}</p>
@@ -396,14 +396,14 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
                         {breedInfo.heat_tolerance && (
                           <div className="bg-gray-50 p-3 rounded-xl col-span-2">
                             <p className="text-[9px] font-black text-gray-400 uppercase mb-0.5">Heat Tolerance</p>
-                            <p className={`text-xs font-black ${breedInfo.heat_tolerance === 'Excellent' ? 'text-zunde-green' : breedInfo.heat_tolerance === 'Moderate' ? 'text-orange-500' : 'text-red-500'}`}>
+                            <p className={`text-xs font-black ${breedInfo.heat_tolerance === 'Excellent' ? 'text-pfuma-green' : breedInfo.heat_tolerance === 'Moderate' ? 'text-orange-500' : 'text-red-500'}`}>
                               {breedInfo.heat_tolerance}
                             </p>
                           </div>
                         )}
                       </div>
                       <div className="bg-green-50 border border-green-100 rounded-xl p-3 flex gap-2">
-                        <Info size={13} className="text-zunde-green mt-0.5 shrink-0" />
+                        <Info size={13} className="text-pfuma-green mt-0.5 shrink-0" />
                         <p className="text-[11px] text-green-800 font-medium leading-relaxed">{breedInfo.notes}</p>
                       </div>
                     </div>
@@ -501,7 +501,7 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
               {/* Progress summary */}
               {schedule.length > 0 && (
                 <div className="flex gap-3 text-[10px] font-black uppercase shrink-0">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-zunde-green" />{doneCount} Done</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-pfuma-green" />{doneCount} Done</span>
                   {overdueCount > 0 && <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />{overdueCount} Overdue</span>}
                   {dueSoonCount > 0 && <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-400" />{dueSoonCount} Due Soon</span>}
                 </div>
@@ -533,14 +533,14 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
                       </div>
                     </div>
                     {task.status === 'Completed'
-                      ? <CheckCircle size={16} className="text-zunde-green shrink-0 mt-0.5" />
+                      ? <CheckCircle size={16} className="text-pfuma-green shrink-0 mt-0.5" />
                       : (
                         <button
                           onClick={() => handleCompleteTask(task.name, task.taskId)}
                           className={`shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition ml-2 ${
                             task.status === 'Overdue'  ? 'bg-red-600 text-white hover:bg-red-700' :
                             task.status === 'Due Soon' ? 'bg-orange-500 text-white hover:bg-orange-600' :
-                            'bg-white text-gray-500 border border-gray-200 hover:border-zunde-green hover:text-zunde-green'
+                            'bg-white text-gray-500 border border-gray-200 hover:border-pfuma-green hover:text-pfuma-green'
                           }`}
                         >
                           Mark Done
@@ -581,13 +581,13 @@ const InventoryCabinet = ({ inventory }) => (
               )}
             </div>
             <div className="flex justify-between items-baseline mb-2">
-              <strong className={`text-lg font-black ${isLow ? 'text-red-600' : 'text-zunde-green'}`}>
+              <strong className={`text-lg font-black ${isLow ? 'text-red-600' : 'text-pfuma-green'}`}>
                 {item.stock.toFixed(0)} <small className="text-[10px] uppercase font-bold">{item.unit}</small>
               </strong>
               <span className="text-[10px] text-gray-400 font-bold">Min: {item.min} {item.unit}</span>
             </div>
             <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-500 ${isLow ? 'bg-red-500' : pct > 50 ? 'bg-zunde-green' : 'bg-orange-400'}`} style={{ width: `${pct}%` }} />
+              <div className={`h-full rounded-full transition-all duration-500 ${isLow ? 'bg-red-500' : pct > 50 ? 'bg-pfuma-green' : 'bg-orange-400'}`} style={{ width: `${pct}%` }} />
             </div>
             {isLow && <p className="text-[10px] text-red-500 font-medium mt-1.5">Reorder from {item.supplier}</p>}
           </div>

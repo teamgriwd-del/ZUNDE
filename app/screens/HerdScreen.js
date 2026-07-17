@@ -61,7 +61,7 @@ export default function HerdScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSub}>ZUNDE RaMambo</Text>
+          <Text style={styles.headerSub}>PFUMA</Text>
           <Text style={styles.headerTitle}>Herd Registry</Text>
           <Text style={styles.headerDesc}>{animals.length} animal{animals.length !== 1 ? 's' : ''} registered</Text>
         </View>

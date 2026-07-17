@@ -1,4 +1,4 @@
-// ZUNDE Logic Verification Suite
+// PFUMA Logic Verification Suite
 // To run: node src/verify_logic.js
 
 import { diseaseDatabase } from './components/DiseaseDetection/diseaseData.js';

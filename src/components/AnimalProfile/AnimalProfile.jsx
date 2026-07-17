@@ -34,7 +34,7 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
   <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
     <div className="bg-white w-full max-w-4xl rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
       {/* Header */}
-      <div className="bg-zunde-green px-10 py-8 text-white flex justify-between items-center relative overflow-hidden">
+      <div className="bg-pfuma-green px-10 py-8 text-white flex justify-between items-center relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-1">
             <ShieldCheck size={28} className="text-yellow-400" />
@@ -58,7 +58,7 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Estimated Market Value</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-black text-zunde-green">USD</span>
+                <span className="text-sm font-black text-pfuma-green">USD</span>
                 <strong className="text-3xl font-black text-gray-800">${calculateValue(animal, auditLog)}</strong>
               </div>
               <p className="text-[10px] text-gray-400 font-medium mt-1">Based on weight, species, and health records</p>
@@ -80,7 +80,7 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
                   { label: 'Sire ID',    value: animal.sireId  || '—' },
                 ].map(f => (
                   <div key={f.label}>
-                    <p className="text-[10px] font-black text-zunde-green uppercase mb-0.5">{f.label}</p>
+                    <p className="text-[10px] font-black text-pfuma-green uppercase mb-0.5">{f.label}</p>
                     <p className="text-lg font-black text-gray-800">{f.value}</p>
                   </div>
                 ))}
@@ -96,7 +96,7 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
                   {auditLog.filter(l => l.animalId === animal.id).map(log => (
                     <div key={log.id} className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-zunde-green shrink-0" />
+                        <div className="w-2 h-2 rounded-full bg-pfuma-green shrink-0" />
                         <p className="text-sm font-black text-gray-800">{log.action}</p>
                       </div>
                       <span className="text-[10px] text-gray-400 font-bold uppercase shrink-0 ml-4">{log.date}</span>
@@ -112,11 +112,11 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
       {/* Footer */}
       <div className="px-10 py-5 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-          <ShieldCheck size={14} className="text-zunde-green" /> RaMambo Verified · {new Date().getFullYear()}
+          <ShieldCheck size={14} className="text-pfuma-green" /> PFUMA Verified · {new Date().getFullYear()}
         </div>
         <div className="flex gap-3">
           <button className="px-6 py-2.5 bg-white border-2 border-gray-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition">Print</button>
-          <button className="px-6 py-2.5 bg-zunde-green text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md hover:bg-green-700 transition">Export PDF</button>
+          <button className="px-6 py-2.5 bg-pfuma-green text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md hover:bg-green-700 transition">Export PDF</button>
         </div>
       </div>
     </div>
@@ -147,7 +147,7 @@ const RegistrationForm = ({ onSubmit, onCancel }) => {
       {children}
     </div>
   );
-  const inputCls = "w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-zunde-green outline-none font-bold text-sm transition";
+  const inputCls = "w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-pfuma-green outline-none font-bold text-sm transition";
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -218,7 +218,7 @@ const RegistrationForm = ({ onSubmit, onCancel }) => {
               </div>
             </div>
 
-            <button type="submit" className="w-full py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
+            <button type="submit" className="w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
               <CheckCircle size={16} /> Register Animal
             </button>
           </form>
@@ -251,7 +251,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
     return (
       <div className="p-6 bg-gray-50 min-h-full space-y-5 text-left">
         {/* Back */}
-        <button onClick={() => { setSelectedAnimalId(null); setActiveTab('history'); }} className="flex items-center gap-1.5 text-zunde-green font-black text-xs uppercase tracking-widest hover:underline">
+        <button onClick={() => { setSelectedAnimalId(null); setActiveTab('history'); }} className="flex items-center gap-1.5 text-pfuma-green font-black text-xs uppercase tracking-widest hover:underline">
           <ArrowLeft size={14} /> Back to Herd
         </button>
 
@@ -292,10 +292,10 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
               </div>
               <button
                 onClick={() => onListAnimal && onListAnimal(selectedAnimal.id)}
-                className={`p-4 rounded-2xl border-2 text-left transition hover:scale-105 ${selectedAnimal.forSale ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-100 hover:border-zunde-green'}`}
+                className={`p-4 rounded-2xl border-2 text-left transition hover:scale-105 ${selectedAnimal.forSale ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-100 hover:border-pfuma-green'}`}
               >
                 <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Market</p>
-                <p className={`text-sm font-black ${selectedAnimal.forSale ? 'text-yellow-600' : 'text-zunde-green'}`}>
+                <p className={`text-sm font-black ${selectedAnimal.forSale ? 'text-yellow-600' : 'text-pfuma-green'}`}>
                   {selectedAnimal.forSale ? '🏷 For Sale' : 'Not Listed'}
                 </p>
                 <p className="text-[9px] text-gray-400 font-medium mt-0.5">{selectedAnimal.forSale ? 'Tap to delist' : 'Tap to list'}</p>
@@ -303,9 +303,9 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
             </div>
 
             {/* Valuation */}
-            <div className="bg-zunde-green/5 border border-zunde-green/20 rounded-2xl px-4 py-3 flex items-center justify-between mt-auto">
+            <div className="bg-pfuma-green/5 border border-pfuma-green/20 rounded-2xl px-4 py-3 flex items-center justify-between mt-auto">
               <div>
-                <p className="text-[10px] font-black text-zunde-green uppercase">Estimated Value</p>
+                <p className="text-[10px] font-black text-pfuma-green uppercase">Estimated Value</p>
                 <p className="text-[11px] text-gray-500 font-medium">Weight + species + {animalLogs.length} health record{animalLogs.length !== 1 ? 's' : ''}</p>
               </div>
               <p className="text-2xl font-black text-gray-900">USD ${calculateValue(selectedAnimal, auditLog)}</p>
@@ -323,9 +323,9 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
-                className={`flex-1 px-6 py-4 text-left transition ${activeTab === t.id ? 'border-b-2 border-zunde-green bg-green-50/50' : 'hover:bg-gray-50'}`}
+                className={`flex-1 px-6 py-4 text-left transition ${activeTab === t.id ? 'border-b-2 border-pfuma-green bg-green-50/50' : 'hover:bg-gray-50'}`}
               >
-                <p className={`text-xs font-black uppercase tracking-wide ${activeTab === t.id ? 'text-zunde-green' : 'text-gray-500'}`}>{t.label}</p>
+                <p className={`text-xs font-black uppercase tracking-wide ${activeTab === t.id ? 'text-pfuma-green' : 'text-gray-500'}`}>{t.label}</p>
                 <p className="text-[10px] text-gray-400 font-medium mt-0.5">{t.desc}</p>
               </button>
             ))}
@@ -342,8 +342,8 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
               ) : (
                 <div className="space-y-3">
                   {animalLogs.map(log => (
-                    <div key={log.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-zunde-green/20 transition">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-zunde-green shadow-sm shrink-0">
+                    <div key={log.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-transparent hover:border-pfuma-green/20 transition">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-pfuma-green shadow-sm shrink-0">
                         <ShieldCheck size={20} />
                       </div>
                       <div className="flex-1">
@@ -357,7 +357,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
             ) : (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp size={16} className="text-zunde-green" />
+                  <TrendingUp size={16} className="text-pfuma-green" />
                   <h4 className="text-sm font-black text-gray-800">Weight Over Time (kg)</h4>
                   <span className="text-[11px] text-gray-400 font-medium">— shows growth from birth to current weight</span>
                 </div>
@@ -445,7 +445,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
             </h3>
             <button
               onClick={() => setIsRegistering(true)}
-              className="flex items-center gap-2 bg-zunde-green text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 shadow-lg transition"
+              className="flex items-center gap-2 bg-pfuma-green text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 shadow-lg transition"
             >
               <PlusCircle size={16} /> Add Animal
             </button>
@@ -458,7 +458,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
               <p className="text-xs text-gray-400 font-medium mb-6">Register your first animal to start tracking its health, weight, and vaccinations.</p>
               <button
                 onClick={() => setIsRegistering(true)}
-                className="flex items-center gap-2 bg-zunde-green text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 shadow-lg transition"
+                className="flex items-center gap-2 bg-pfuma-green text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 shadow-lg transition"
               >
                 <PlusCircle size={16} /> Register First Animal
               </button>
@@ -470,7 +470,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
                 <button
                   key={a.id}
                   onClick={() => setSelectedAnimalId(a.id)}
-                  className="w-full group bg-white p-4 rounded-2xl shadow-sm border-2 border-transparent hover:border-zunde-green/30 hover:shadow-lg flex items-center gap-4 text-left transition"
+                  className="w-full group bg-white p-4 rounded-2xl shadow-sm border-2 border-transparent hover:border-pfuma-green/30 hover:shadow-lg flex items-center gap-4 text-left transition"
                 >
                   <div className="w-20 h-20 rounded-2xl bg-gray-100 overflow-hidden shrink-0">
                     <img
@@ -481,7 +481,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[10px] font-black text-zunde-green bg-green-50 px-2 py-0.5 rounded uppercase">{a.tagId || 'No Tag'}</span>
+                      <span className="text-[10px] font-black text-pfuma-green bg-green-50 px-2 py-0.5 rounded uppercase">{a.tagId || 'No Tag'}</span>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${SPECIES_COLORS[a.species] || 'bg-gray-100 text-gray-600'}`}>{speciesEmoji[a.species]} {a.species}</span>
                       {a.forSale && <span className="text-[9px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full uppercase">🏷 For Sale</span>}
                     </div>
@@ -495,7 +495,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
                       {logs > 0 && (
                         <>
                           <span className="text-gray-300">·</span>
-                          <span className="text-[11px] text-zunde-green font-black">{logs} health record{logs !== 1 ? 's' : ''}</span>
+                          <span className="text-[11px] text-pfuma-green font-black">{logs} health record{logs !== 1 ? 's' : ''}</span>
                         </>
                       )}
                     </div>
@@ -503,7 +503,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
                   <div className="text-right shrink-0">
                     <p className="text-[10px] text-gray-400 font-bold uppercase">Est. Value</p>
                     <p className="text-sm font-black text-gray-800">${calculateValue(a, auditLog)}</p>
-                    <ChevronRight size={18} className="text-gray-200 group-hover:text-zunde-green transition ml-auto mt-1" />
+                    <ChevronRight size={18} className="text-gray-200 group-hover:text-pfuma-green transition ml-auto mt-1" />
                   </div>
                 </button>
               );
@@ -517,7 +517,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
             {/* Herd breakdown */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={16} className="text-zunde-green" />
+                <BarChart2 size={16} className="text-pfuma-green" />
                 <h4 className="text-sm font-black text-gray-800">Herd Breakdown</h4>
               </div>
               <p className="text-[11px] text-gray-400 font-medium mb-4">Species distribution across your registered animals.</p>
@@ -531,7 +531,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
                         <span className="text-xs font-black text-gray-800">{n}</span>
                       </div>
                       <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="bg-zunde-green h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                        <div className="bg-pfuma-green h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -540,8 +540,8 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
             </div>
 
             {/* Quick tip */}
-            <div className="bg-zunde-green/5 border border-zunde-green/20 rounded-2xl p-4">
-              <p className="text-[11px] font-black text-zunde-green uppercase tracking-wide mb-1">💡 Health Passport</p>
+            <div className="bg-pfuma-green/5 border border-pfuma-green/20 rounded-2xl p-4">
+              <p className="text-[11px] font-black text-pfuma-green uppercase tracking-wide mb-1">💡 Health Passport</p>
               <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
                 Open any animal's profile and tap "Open Passport" to generate a certified health document required for livestock movement permits and sales in Zimbabwe.
               </p>

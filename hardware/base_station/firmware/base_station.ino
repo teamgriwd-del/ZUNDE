@@ -1,13 +1,13 @@
 /**
- * RaMambo Base Station BS-01 — Firmware v1.0
- * ZUNDE Livestock Monitoring System
+ * PFUMA Base Station BS-01 — Firmware v1.0
+ * PFUMA Livestock Monitoring System
  *
  * Hardware: ESP32-WROOM-32
  * Radio   : SX1278 LoRa 433 MHz (receives collar packets)
  * Display : SSD1306 OLED 128×64
  * Network : WiFi → Flask API (backend/app.py)
  *
- * Receives LoRa JSON from collar nodes, forwards to ZUNDE API via WiFi.
+ * Receives LoRa JSON from collar nodes, forwards to PFUMA API via WiFi.
  * Displays live collar status on OLED.
  * Drives 4 status LEDs: PWR / LoRa / WiFi / Alert.
  *
@@ -27,7 +27,7 @@
 #include <Adafruit_SSD1306.h>
 
 // ═══════════════════════════════════════════════════════════════════════
-//  PIN MAP  (matches RAMAMBO_HARDWARE_DESIGN.md BS-01)
+//  PIN MAP  (matches HARDWARE_DESIGN.md BS-01)
 // ═══════════════════════════════════════════════════════════════════════
 #define PIN_LORA_NSS     5
 #define PIN_LORA_RST    14
@@ -44,13 +44,17 @@
 #define PIN_LED_ALERT    13   // Red
 
 // ═══════════════════════════════════════════════════════════════════════
-//  CONFIGURATION — edit these for your farm
+//  CONFIGURATION — REPLACE THE 4 VALUES BELOW BEFORE FLASHING
+//  See "Connecting Your Physical Hardware" in IOT_HARDWARE_GUIDE.md for the
+//  full step-by-step (non-technical) walkthrough.
 // ═══════════════════════════════════════════════════════════════════════
-#define WIFI_SSID        "ZUNDE_Farm_WiFi"
-#define WIFI_PASS        "ramambo2024"
+#define WIFI_SSID        "YOUR_FARM_WIFI_NAME"      // <-- your router's WiFi name
+#define WIFI_PASS        "YOUR_FARM_WIFI_PASSWORD"  // <-- your router's WiFi password
 
-// ZUNDE Flask API endpoint — must match backend/app.py running IP
-#define API_HOST         "http://192.168.1.100:5000"
+// The IP address of the computer/server running backend/app.py on your farm
+// network (find it with `ipconfig` on Windows or `ifconfig`/`ip addr` on
+// Mac/Linux — look for the local 192.168.x.x address, not 127.0.0.1).
+#define API_HOST         "http://YOUR_SERVER_IP:5000"
 #define API_IOT_ENDPOINT "/api/iot/telemetry"
 #define API_ALERT_ENDPOINT "/api/iot/alert"
 
@@ -58,7 +62,11 @@
 #define LORA_BANDWIDTH   125E3
 #define LORA_SF          9
 #define LORA_CR          5
-#define STATION_ID       "BS-01-HNO"      // Harare Northern station ID
+
+// This is the device serial you'll type into the app's IoT tab ("Paired
+// Devices" panel) to claim this base station under your PFUMA account.
+// Give every base station/collar a unique ID, e.g. "BS-01-<YourFarmCode>".
+#define STATION_ID       "BS-01-HNO"
 
 // OLED
 #define OLED_WIDTH       128
@@ -99,7 +107,7 @@ bool          wifiConnected  = false;
 // ═══════════════════════════════════════════════════════════════════════
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("\n=== RaMambo Base Station BS-01 ==="));
+  Serial.println(F("\n=== PFUMA Base Station BS-01 ==="));
 
   initLEDs();
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
@@ -243,7 +251,7 @@ void showOLED_Boot() {
   oled.clearDisplay();
   oled.setTextSize(1);
   oled.setCursor(0, 0);
-  oled.println(F("ZUNDE RaMambo"));
+  oled.println(F("PFUMA"));
   oled.println(F("Base Station BS-01"));
   oled.drawLine(0, 18, 128, 18, SSD1306_WHITE);
   oled.setCursor(0, 22);

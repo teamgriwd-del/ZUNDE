@@ -36,11 +36,11 @@ const severityBadge = (sev) =>
 
 const StepBadge = ({ n, label, active, done }) => (
   <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition
-    ${done  ? 'bg-zunde-green text-white'
+    ${done  ? 'bg-pfuma-green text-white'
     : active ? 'bg-gray-900 text-white'
     :          'bg-gray-100 text-gray-400'}`}>
     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black
-      ${done ? 'bg-white text-zunde-green' : active ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-400'}`}>
+      ${done ? 'bg-white text-pfuma-green' : active ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-400'}`}>
       {done ? '✓' : n}
     </span>
     {label}
@@ -55,7 +55,7 @@ const ConfidenceExplainer = ({ value, matched, total }) => (
     </div>
     <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
       <div
-        className={`h-full rounded-full transition-all duration-700 ${value >= 70 ? 'bg-zunde-green' : value >= 40 ? 'bg-orange-400' : 'bg-yellow-400'}`}
+        className={`h-full rounded-full transition-all duration-700 ${value >= 70 ? 'bg-pfuma-green' : value >= 40 ? 'bg-orange-400' : 'bg-yellow-400'}`}
         style={{ width: `${value}%` }}
       />
     </div>
@@ -170,9 +170,9 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
         <div className="col-span-2 space-y-5">
 
           {/* STEP 1 — Animal */}
-          <div className={`bg-white border-2 rounded-2xl p-5 transition ${step1done ? 'border-zunde-green' : 'border-gray-100'}`}>
+          <div className={`bg-white border-2 rounded-2xl p-5 transition ${step1done ? 'border-pfuma-green' : 'border-gray-100'}`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step1done ? 'bg-zunde-green text-white' : 'bg-gray-100 text-gray-500'}`}>{step1done ? '✓' : '1'}</div>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step1done ? 'bg-pfuma-green text-white' : 'bg-gray-100 text-gray-500'}`}>{step1done ? '✓' : '1'}</div>
               <h3 className="text-sm font-black text-gray-800">Which animal are you examining?</h3>
               <span className="text-[10px] text-gray-400 font-medium ml-1">(optional — lets you save the result to its record)</span>
             </div>
@@ -190,7 +190,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                   <button
                     key={a.id}
                     onClick={() => setTargetAnimalId(String(a.id))}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase border-2 transition ${String(targetAnimalId) === String(a.id) ? 'bg-zunde-green text-white border-zunde-green shadow-md' : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-zunde-green'}`}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase border-2 transition ${String(targetAnimalId) === String(a.id) ? 'bg-pfuma-green text-white border-pfuma-green shadow-md' : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-pfuma-green'}`}
                   >
                     <Tag size={11} />{a.name}<span className="opacity-60">· {a.species}</span>
                   </button>
@@ -210,21 +210,21 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
             {isAnalyzingImage ? (
               <div className="flex items-center gap-4 py-4">
                 <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
-                  <div className="w-6 h-6 border-3 border-zunde-green border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-3 border-pfuma-green border-t-transparent rounded-full animate-spin" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-zunde-green">Analysing photo...</p>
+                  <p className="text-sm font-black text-pfuma-green">Analysing photo...</p>
                   <p className="text-[11px] text-gray-400 font-medium">Scanning for skin lesions, inflammation, and visible symptoms</p>
                 </div>
               </div>
             ) : visualResult ? (
               <div className="flex items-start gap-4 bg-green-50 border border-green-200 rounded-2xl p-4">
                 <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shrink-0 border border-green-100">
-                  <CheckCircle size={22} className="text-zunde-green" />
+                  <CheckCircle size={22} className="text-pfuma-green" />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-black bg-zunde-green text-white px-2 py-0.5 rounded-full uppercase">Photo Match</span>
+                    <span className="text-[9px] font-black bg-pfuma-green text-white px-2 py-0.5 rounded-full uppercase">Photo Match</span>
                     <span className="text-[10px] text-gray-500 font-bold">{visualResult.confidence} confidence</span>
                   </div>
                   <p className="text-sm font-black text-gray-800">{visualResult.detected}</p>
@@ -233,13 +233,13 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                 </div>
               </div>
             ) : (
-              <label className="flex items-center gap-4 cursor-pointer group border-2 border-dashed border-gray-200 hover:border-zunde-green rounded-2xl p-4 transition" aria-label="Upload animal photo">
+              <label className="flex items-center gap-4 cursor-pointer group border-2 border-dashed border-gray-200 hover:border-pfuma-green rounded-2xl p-4 transition" aria-label="Upload animal photo">
                 <input type="file" className="sr-only" onChange={handleImageUpload} accept="image/*" />
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-green-50 group-hover:text-zunde-green transition">
+                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-green-50 group-hover:text-pfuma-green transition">
                   <Camera size={24} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-600 group-hover:text-zunde-green transition">Click to upload a photo</p>
+                  <p className="text-sm font-bold text-gray-600 group-hover:text-pfuma-green transition">Click to upload a photo</p>
                   <p className="text-[11px] text-gray-400 font-medium">Best results: skin, mouth, hooves, or swollen areas · JPG, PNG</p>
                 </div>
               </label>
@@ -251,15 +251,15 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
             <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step2done ? 'bg-zunde-green text-white' : 'bg-gray-100 text-gray-500'}`}>{step2done ? '✓' : '2'}</div>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${step2done ? 'bg-pfuma-green text-white' : 'bg-gray-100 text-gray-500'}`}>{step2done ? '✓' : '2'}</div>
                   <h3 className="text-sm font-black text-gray-800">Tick every symptom you can see</h3>
                 </div>
                 <p className="text-[11px] text-gray-400 font-medium ml-8">Check all symptoms that apply — more symptoms = more accurate result. Ticked symptoms turn green.</p>
               </div>
               {selectedSymptoms.length > 0 && (
-                <div className="flex items-center gap-2 bg-zunde-green/10 border border-zunde-green/20 px-3 py-1.5 rounded-full">
-                  <CheckCircle size={12} className="text-zunde-green" />
-                  <span className="text-xs font-black text-zunde-green">{selectedSymptoms.length} symptom{selectedSymptoms.length !== 1 ? 's' : ''} selected</span>
+                <div className="flex items-center gap-2 bg-pfuma-green/10 border border-pfuma-green/20 px-3 py-1.5 rounded-full">
+                  <CheckCircle size={12} className="text-pfuma-green" />
+                  <span className="text-xs font-black text-pfuma-green">{selectedSymptoms.length} symptom{selectedSymptoms.length !== 1 ? 's' : ''} selected</span>
                 </div>
               )}
             </div>
@@ -270,7 +270,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
               <input
                 type="text"
                 placeholder="Search symptoms..."
-                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 rounded-xl text-sm font-medium outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-zunde-green/30"
+                className="w-full pl-9 pr-4 py-2.5 bg-gray-50 rounded-xl text-sm font-medium outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-pfuma-green/30"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -287,7 +287,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                       <span className="text-base">{meta.icon}</span>
                       <h4 className="text-xs font-black text-gray-600 uppercase tracking-widest">{cat.name}</h4>
                       {catSelected > 0 && (
-                        <span className="ml-auto text-[10px] font-black text-zunde-green bg-green-50 px-2 py-0.5 rounded-full">{catSelected} selected</span>
+                        <span className="ml-auto text-[10px] font-black text-pfuma-green bg-green-50 px-2 py-0.5 rounded-full">{catSelected} selected</span>
                       )}
                     </div>
                     {meta.tip && <p className="text-[10px] text-gray-400 font-medium mb-3">{meta.tip}</p>}
@@ -299,8 +299,8 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                             key={symptom}
                             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition border-2 select-none
                               ${ticked
-                                ? 'bg-zunde-green text-white border-zunde-green shadow-sm'
-                                : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-zunde-green/40 hover:bg-green-50/50'
+                                ? 'bg-pfuma-green text-white border-pfuma-green shadow-sm'
+                                : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-pfuma-green/40 hover:bg-green-50/50'
                               }`}
                           >
                             <input type="checkbox" className="sr-only" checked={ticked} onChange={() => toggleSymptom(symptom)} aria-label={symptom} />
@@ -323,7 +323,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
               <button
                 onClick={analyzeSymptoms}
                 disabled={!selectedSymptoms.length}
-                className="flex-1 flex items-center justify-center gap-2 py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-green-900/20 hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-green-900/20 hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Stethoscope size={16} />
                 {hasAnalyzed ? 'Re-run Analysis' : 'Run Diagnosis'}
@@ -340,7 +340,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
           {hasAnalyzed && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-zunde-green text-white flex items-center justify-center text-[10px] font-black">3</div>
+                <div className="w-6 h-6 rounded-full bg-pfuma-green text-white flex items-center justify-center text-[10px] font-black">3</div>
                 <h3 className="text-sm font-black text-gray-800">Diagnosis Results</h3>
                 <span className="text-[11px] text-gray-400 font-medium">— {diagnosisResults.length} possible match{diagnosisResults.length !== 1 ? 'es' : ''} found</span>
               </div>
@@ -360,13 +360,13 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
               ) : diagnosisResults.map((res, i) => (
                 <div
                   key={res.id}
-                  className={`bg-white rounded-2xl border-2 transition ${i === 0 ? 'border-zunde-green shadow-lg shadow-green-900/5' : 'border-gray-100'}`}
+                  className={`bg-white rounded-2xl border-2 transition ${i === 0 ? 'border-pfuma-green shadow-lg shadow-green-900/5' : 'border-gray-100'}`}
                 >
                   {/* Result header */}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {i === 0 && <span className="text-[9px] font-black bg-zunde-green text-white px-2 py-0.5 rounded-full uppercase">Top Match</span>}
+                        {i === 0 && <span className="text-[9px] font-black bg-pfuma-green text-white px-2 py-0.5 rounded-full uppercase">Top Match</span>}
                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${severityBadge(res.severity)}`}>{res.severity}</span>
                         {res.quarantineRequired && (
                           <span className="text-[9px] font-black bg-orange-100 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
@@ -387,7 +387,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                     {/* Expand toggle for non-top results */}
                     {i > 0 && (
                       <button
-                        className="mt-3 flex items-center gap-1 text-[11px] font-black text-gray-400 hover:text-zunde-green transition uppercase tracking-wide"
+                        className="mt-3 flex items-center gap-1 text-[11px] font-black text-gray-400 hover:text-pfuma-green transition uppercase tracking-wide"
                         onClick={() => setExpandedId(expandedId === res.id ? null : res.id)}
                         aria-expanded={expandedId === res.id}
                       >
@@ -404,12 +404,12 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                       {animals.length > 0 && i === 0 && (
                         <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-2.5 gap-3">
                           <div className="flex items-center gap-2 text-[11px] text-gray-500 font-bold">
-                            <ClipboardList size={13} className="text-zunde-green" />
+                            <ClipboardList size={13} className="text-pfuma-green" />
                             Save this result to an animal's health record:
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <select
-                              className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-zunde-green/30"
+                              className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-pfuma-green/30"
                               value={targetAnimalId}
                               onChange={e => setTargetAnimalId(e.target.value)}
                               aria-label="Select animal"
@@ -420,7 +420,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                             {targetAnimalId && (
                               <button
                                 onClick={() => saveToHistory(res.name)}
-                                className="px-3 py-1.5 bg-zunde-green text-white text-xs font-black rounded-lg hover:bg-green-700 transition uppercase"
+                                className="px-3 py-1.5 bg-pfuma-green text-white text-xs font-black rounded-lg hover:bg-green-700 transition uppercase"
                               >
                                 Save
                               </button>
@@ -433,13 +433,13 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => setActiveTab('action')}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${activeTab === 'action' ? 'bg-zunde-green text-white shadow-sm' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${activeTab === 'action' ? 'bg-pfuma-green text-white shadow-sm' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                         >
                           🚨 Action Plan
                         </button>
                         <button
                           onClick={() => setActiveTab('prevention')}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${activeTab === 'prevention' ? 'bg-zunde-green text-white shadow-sm' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition ${activeTab === 'prevention' ? 'bg-pfuma-green text-white shadow-sm' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
                         >
                           <Leaf size={11} className="inline mr-1" />Prevention Tips
                         </button>
@@ -449,7 +449,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                         {(activeTab === 'action' ? res.actionPlan : res.preventionTips).map((step, s) => (
                           <div key={s} className="flex items-start gap-2.5">
                             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black shrink-0 mt-0.5
-                              ${activeTab === 'action' ? 'bg-zunde-green text-white' : 'bg-green-100 text-green-700'}`}>
+                              ${activeTab === 'action' ? 'bg-pfuma-green text-white' : 'bg-green-100 text-green-700'}`}>
                               {s + 1}
                             </div>
                             <p className="text-xs text-gray-600 font-medium leading-relaxed">{step}</p>
@@ -510,10 +510,10 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
 
           {/* How confidence works */}
           <div className="bg-white border border-gray-100 rounded-2xl p-5">
-            <h4 className="text-sm font-black text-gray-800 mb-1 flex items-center gap-2"><Info size={14} className="text-zunde-green" /> How the match % works</h4>
+            <h4 className="text-sm font-black text-gray-800 mb-1 flex items-center gap-2"><Info size={14} className="text-pfuma-green" /> How the match % works</h4>
             <div className="space-y-3 mt-3">
               {[
-                { range: '70 – 100%', label: 'Strong match', desc: 'Most known symptoms present. High probability — act now.', color: 'bg-zunde-green' },
+                { range: '70 – 100%', label: 'Strong match', desc: 'Most known symptoms present. High probability — act now.', color: 'bg-pfuma-green' },
                 { range: '40 – 69%', label: 'Possible match', desc: 'Some symptoms present. Monitor closely and consult a vet.', color: 'bg-orange-400' },
                 { range: '20 – 39%', label: 'Weak match', desc: 'Few symptoms match. Keep watching — add more symptoms if they appear.', color: 'bg-yellow-400' },
               ].map(r => (
@@ -538,8 +538,8 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
           )}
 
           {/* Quick tip */}
-          <div className="bg-zunde-green/5 border border-zunde-green/20 rounded-2xl p-4">
-            <p className="text-[11px] font-black text-zunde-green uppercase tracking-wide mb-1">💡 Pro Tip</p>
+          <div className="bg-pfuma-green/5 border border-pfuma-green/20 rounded-2xl p-4">
+            <p className="text-[11px] font-black text-pfuma-green uppercase tracking-wide mb-1">💡 Pro Tip</p>
             <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
               The more symptoms you select, the more accurate the result. Always cross-check with the Regional Radar — if the top match is also active near your farm, treat it as urgent.
             </p>

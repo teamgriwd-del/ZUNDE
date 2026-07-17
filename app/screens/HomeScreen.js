@@ -74,11 +74,11 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.header}>
         <View>
           <Text style={styles.greet}>{greet()}, Farmer 🌾</Text>
-          <Text style={styles.appName}>ZUNDE RaMambo</Text>
+          <Text style={styles.appName}>PFUMA</Text>
           <Text style={styles.tagline}>Zimbabwe's Livestock Intelligence Platform</Text>
         </View>
         <View style={styles.logoBox}>
-          <Text style={styles.logoText}>R</Text>
+          <Text style={styles.logoText}>P</Text>
         </View>
       </View>
 

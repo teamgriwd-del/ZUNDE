@@ -62,7 +62,7 @@ const AUTO_RESPONSES = {
     ],
     General: [
       'Message received. A vet officer will respond shortly.',
-      'Thank you for contacting ZUNDE Vet Services. We aim to respond within 1 hour.',
+      'Thank you for contacting PFUMA Vet Services. We aim to respond within 1 hour.',
     ],
   },
   Supplier: [
@@ -162,8 +162,8 @@ export default function VetMessengerScreen({ currentUser, route }) {
 
         {/* Header */}
         <View style={s.header}>
-          <Text style={s.headerSub}>ZUNDE RaMambo</Text>
-          <Text style={s.headerTitle}>ZUNDE Messenger</Text>
+          <Text style={s.headerSub}>PFUMA</Text>
+          <Text style={s.headerTitle}>PFUMA Messenger</Text>
           <Text style={s.headerDesc}>Chat with vets, suppliers, farmers & retailers across Zimbabwe</Text>
         </View>
 
@@ -223,7 +223,7 @@ export default function VetMessengerScreen({ currentUser, route }) {
           <View style={s.infoPanel}>
             <View style={s.infoTitleRow}>
               <ShieldCheck size={15} color={COLORS.primary} />
-              <Text style={s.infoTitle}>How ZUNDE Messenger Works</Text>
+              <Text style={s.infoTitle}>How PFUMA Messenger Works</Text>
             </View>
             {[
               { icon: ClipboardList, text: 'Pick anyone on the platform — a vet, supplier, fellow farmer, or retailer' },

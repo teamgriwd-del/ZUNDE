@@ -1,4 +1,4 @@
-.zunde-ai-toggle {
+.pfuma-ai-toggle {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
@@ -27,7 +27,7 @@
   border: 3px solid white;
 }
 
-.zunde-ai-panel {
+.pfuma-ai-panel {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
@@ -116,7 +116,7 @@
 }
 
 @media (max-width: 500px) {
-  .zunde-ai-panel {
+  .pfuma-ai-panel {
     width: calc(100vw - 2rem);
     height: calc(100vh - 4rem);
     bottom: 1rem;

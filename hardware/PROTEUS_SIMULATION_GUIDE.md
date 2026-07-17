@@ -1,4 +1,4 @@
-# RaMambo — Proteus 8 Simulation Guide
+# PFUMA — Proteus 8 Simulation Guide
 # Step-by-step: build and run the collar node simulation
 
 ---
@@ -23,7 +23,7 @@ with equivalent logic to the ESP32 version.
 ## STEP 1: CREATE NEW PROJECT
 
 1. Open Proteus 8  →  New Project
-2. Name: RaMambo_Collar_CN01
+2. Name: PFUMA_Collar_CN01
 3. Schematic: DEFAULT
 4. PCB: None (simulation only)
 5. Firmware: None (we load .hex separately)
@@ -177,7 +177,7 @@ DC Voltmeter      Battery node               See 5V supply
 Paste this into Arduino IDE, compile, export .hex, load into Proteus.
 
 ```cpp
-// RaMambo CN-01 — Proteus Simulation Firmware
+// PFUMA CN-01 — Proteus Simulation Firmware
 // For: Arduino Mega 2560 (simulates ESP32 collar node)
 // Board in Proteus: ARDUINO MEGA 2560
 
@@ -226,7 +226,7 @@ void setup() {
     digitalWrite(PIN_LED_STATUS, HIGH); delay(200);
     digitalWrite(PIN_LED_STATUS, LOW);  delay(200);
   }
-  Serial.println(F("RaMambo Collar Node — Proteus Simulation"));
+  Serial.println(F("PFUMA Collar Node — Proteus Simulation"));
 }
 
 void loop() {

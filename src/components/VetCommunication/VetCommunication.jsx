@@ -31,7 +31,7 @@ const CONTACTS = [
 ];
 
 const ROLE_META = {
-  Vet:      { icon: Stethoscope, color: 'text-zunde-green', label: 'Vets' },
+  Vet:      { icon: Stethoscope, color: 'text-pfuma-green', label: 'Vets' },
   Supplier: { icon: Pill,        color: 'text-amber-600',   label: 'Suppliers' },
   Farmer:   { icon: Sprout,      color: 'text-green-600',   label: 'Farmers' },
   Retailer: { icon: Store,       color: 'text-purple-600',  label: 'Retailers' },
@@ -64,7 +64,7 @@ const AUTO_RESPONSES = {
     ],
     General: [
       "Message received. A vet officer will respond shortly.",
-      "Thank you for contacting ZUNDE Vet Services. We aim to respond within 1 hour."
+      "Thank you for contacting PFUMA Vet Services. We aim to respond within 1 hour."
     ]
   },
   Supplier: [
@@ -140,7 +140,7 @@ const MessageBubble = ({ msg, isOwn }) => (
     <div className={`max-w-[72%] group`}>
       <div className={`px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed shadow-sm ${
         isOwn
-          ? 'bg-zunde-green text-white rounded-br-sm'
+          ? 'bg-pfuma-green text-white rounded-br-sm'
           : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
       }`}>
         {msg.text}
@@ -309,10 +309,10 @@ const VetCommunication = ({ animals = [] }) => {
         {/* Header */}
         <div className="px-5 pt-6 pb-4 border-b border-gray-100">
           <div className="flex justify-between items-center mb-1">
-            <h2 className="text-xl font-black text-gray-900">ZUNDE Messenger</h2>
+            <h2 className="text-xl font-black text-gray-900">PFUMA Messenger</h2>
             <button
               onClick={() => { setIsCreating(true); setSelectedContact(null); setActiveConvId(null); }}
-              className="w-9 h-9 bg-zunde-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition shadow-md"
+              className="w-9 h-9 bg-pfuma-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition shadow-md"
               aria-label="New case"
             >
               <Plus size={18} />
@@ -324,7 +324,7 @@ const VetCommunication = ({ animals = [] }) => {
             <input
               type="text"
               placeholder="Search conversations..."
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-zunde-green/30"
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-pfuma-green/30"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -337,7 +337,7 @@ const VetCommunication = ({ animals = [] }) => {
                   key={f.key}
                   onClick={() => setActiveFilter(f.key)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap transition shrink-0 ${
-                    active ? 'bg-zunde-green text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    active ? 'bg-pfuma-green text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}
                 >
                   <f.icon size={11} />
@@ -399,7 +399,7 @@ const VetCommunication = ({ animals = [] }) => {
                 <button
                   key={conv.id}
                   onClick={() => handleSelectConv(conv)}
-                  className={`w-full flex items-center gap-3 px-5 py-3.5 transition text-left ${isActive ? 'bg-green-50 border-r-4 border-zunde-green' : 'hover:bg-gray-50'}`}
+                  className={`w-full flex items-center gap-3 px-5 py-3.5 transition text-left ${isActive ? 'bg-green-50 border-r-4 border-pfuma-green' : 'hover:bg-gray-50'}`}
                 >
                   <div className="relative shrink-0">
                     <div className={`w-12 h-12 ${contact.color} rounded-full flex items-center justify-center text-white font-black text-sm`}>
@@ -437,7 +437,7 @@ const VetCommunication = ({ animals = [] }) => {
         <div className="border-t border-gray-100 px-5 py-3">
           <button
             onClick={() => setShowHotlines(p => !p)}
-            className="flex items-center gap-2 text-[11px] font-bold text-gray-500 hover:text-zunde-green transition w-full"
+            className="flex items-center gap-2 text-[11px] font-bold text-gray-500 hover:text-pfuma-green transition w-full"
           >
             <Phone size={12} />
             <span>Emergency Hotlines</span>
@@ -448,7 +448,7 @@ const VetCommunication = ({ animals = [] }) => {
               {EMERGENCY_HOTLINES.map((h, i) => (
                 <div key={i} className="flex justify-between items-center px-2 py-1.5 bg-gray-50 rounded-xl">
                   <span className="text-[10px] text-gray-500 font-medium">{h.label}</span>
-                  <a href={`tel:${h.number}`} className="text-[11px] font-black text-zunde-green hover:underline flex items-center gap-1">
+                  <a href={`tel:${h.number}`} className="text-[11px] font-black text-pfuma-green hover:underline flex items-center gap-1">
                     <PhoneCall size={10} />{h.number}
                   </a>
                 </div>
@@ -486,7 +486,7 @@ const VetCommunication = ({ animals = [] }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-type">Case Type</label>
-                    <select id="cc-type" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30" value={newCase.category} onChange={e => setNewCase(p => ({ ...p, category: e.target.value }))}>
+                    <select id="cc-type" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.category} onChange={e => setNewCase(p => ({ ...p, category: e.target.value }))}>
                       <option>Emergency</option>
                       <option>Vaccination</option>
                       <option>Trade Certification</option>
@@ -494,21 +494,21 @@ const VetCommunication = ({ animals = [] }) => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-animal">Animal</label>
-                    <select id="cc-animal" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30" value={newCase.animalId} onChange={e => setNewCase(p => ({ ...p, animalId: e.target.value }))}>
+                    <select id="cc-animal" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.animalId} onChange={e => setNewCase(p => ({ ...p, animalId: e.target.value }))}>
                       <option value="">Select animal...</option>
                       {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-province">Province</label>
-                    <select id="cc-province" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30" value={newCase.province} onChange={e => setNewCase(p => ({ ...p, province: e.target.value, district: '' }))}>
+                    <select id="cc-province" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.province} onChange={e => setNewCase(p => ({ ...p, province: e.target.value, district: '' }))}>
                       <option value="">Select province...</option>
                       {Object.keys(ZIMBABWE_REGIONS).map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-district">District</label>
-                    <select id="cc-district" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30" value={newCase.district} onChange={e => setNewCase(p => ({ ...p, district: e.target.value }))} disabled={!newCase.province}>
+                    <select id="cc-district" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.district} onChange={e => setNewCase(p => ({ ...p, district: e.target.value }))} disabled={!newCase.province}>
                       <option value="">Select district...</option>
                       {(ZIMBABWE_REGIONS[newCase.province] || []).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
@@ -523,7 +523,7 @@ const VetCommunication = ({ animals = [] }) => {
                     required
                     maxLength={120}
                     placeholder="e.g. Suspected FMD — Chegutu Farm"
-                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30"
+                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30"
                     value={newCase.subject}
                     onChange={e => setNewCase(p => ({ ...p, subject: e.target.value }))}
                   />
@@ -536,14 +536,14 @@ const VetCommunication = ({ animals = [] }) => {
                     rows={4}
                     maxLength={500}
                     placeholder="Describe symptoms, timeline, and animals affected..."
-                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-zunde-green/30 resize-none"
+                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30 resize-none"
                     value={newCase.description}
                     onChange={e => setNewCase(p => ({ ...p, description: e.target.value }))}
                   />
                   <p className="text-right text-[10px] text-gray-400 mt-1">{newCase.description.length}/500</p>
                 </div>
 
-                <button type="submit" className="w-full py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
+                <button type="submit" className="w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
                   <Send size={16} /> Send to {selectedContact?.name || 'Duty Vet'}
                 </button>
               </form>
@@ -642,8 +642,8 @@ const VetCommunication = ({ animals = [] }) => {
 
             {/* Input */}
             <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-200 focus-within:border-zunde-green/50 focus-within:shadow-md transition">
-                <button className="text-gray-400 hover:text-zunde-green transition shrink-0" aria-label="Attach file"><Paperclip size={18} /></button>
+              <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-200 focus-within:border-pfuma-green/50 focus-within:shadow-md transition">
+                <button className="text-gray-400 hover:text-pfuma-green transition shrink-0" aria-label="Attach file"><Paperclip size={18} /></button>
                 <input
                   ref={inputRef}
                   type="text"
@@ -655,11 +655,11 @@ const VetCommunication = ({ animals = [] }) => {
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   aria-label="Message"
                 />
-                <button className="text-gray-400 hover:text-zunde-green transition shrink-0" aria-label="Emoji"><Smile size={18} /></button>
+                <button className="text-gray-400 hover:text-pfuma-green transition shrink-0" aria-label="Emoji"><Smile size={18} /></button>
                 <button
                   onClick={handleSend}
                   disabled={!chatInput.trim()}
-                  className="w-9 h-9 bg-zunde-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-md"
+                  className="w-9 h-9 bg-pfuma-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-md"
                   aria-label="Send"
                 >
                   <Send size={16} />
@@ -676,16 +676,16 @@ const VetCommunication = ({ animals = [] }) => {
         {!isCreating && !activeConv && (
           <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-center px-8">
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 border border-gray-100">
-              <Zap size={40} className="text-zunde-green" />
+              <Zap size={40} className="text-pfuma-green" />
             </div>
-            <h3 className="text-2xl font-black text-gray-800 mb-2">ZUNDE Messenger</h3>
+            <h3 className="text-2xl font-black text-gray-800 mb-2">PFUMA Messenger</h3>
             <p className="text-gray-400 font-medium text-sm max-w-xs leading-relaxed mb-8">
               Connect with vets, suppliers, farmers & retailers across Zimbabwe. Pick a contact above or open a conversation.
             </p>
             <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
               <button
                 onClick={() => { setIsCreating(true); setSelectedContact(CONTACTS[0]); }}
-                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-zunde-green shadow-sm hover:shadow-md transition group"
+                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-pfuma-green shadow-sm hover:shadow-md transition group"
               >
                 <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
                   <Zap size={24} className="text-red-500" />
@@ -695,10 +695,10 @@ const VetCommunication = ({ animals = [] }) => {
               </button>
               <button
                 onClick={() => { setIsCreating(true); setSelectedContact(CONTACTS[1]); setNewCase(p => ({ ...p, category: 'Trade Certification' })); }}
-                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-zunde-green shadow-sm hover:shadow-md transition group"
+                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-pfuma-green shadow-sm hover:shadow-md transition group"
               >
                 <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                  <ShieldCheck size={24} className="text-zunde-green" />
+                  <ShieldCheck size={24} className="text-pfuma-green" />
                 </div>
                 <span className="text-sm font-black text-gray-800">Certification</span>
                 <span className="text-[10px] text-gray-400 font-medium mt-1">Trade & movement</span>

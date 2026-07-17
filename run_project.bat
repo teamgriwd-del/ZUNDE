@@ -1,14 +1,14 @@
 @echo off
-echo Starting ZUNDE Project...
+echo Starting PFUMA Project...
 
 :: Start Frontend
-start "ZUNDE Frontend" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\ZUNDE" npm run dev
+start "PFUMA Frontend" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\PFUMA" npm run dev
 
 :: Start Expo App
-start "ZUNDE Expo" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\ZUNDE\app" npx expo start
+start "PFUMA Expo" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\PFUMA\app" npx expo start
 
 :: Start Backend
-start "ZUNDE Backend" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\ZUNDE\backend" py app.py
+start "PFUMA Backend" /d "C:\Users\ARNOLD\Documents\GRIWD\PROJECTS\PFUMA\backend" py app.py
 
 echo All services are starting in separate windows.
 pause

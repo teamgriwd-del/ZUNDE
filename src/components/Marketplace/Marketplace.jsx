@@ -9,7 +9,7 @@ const API = 'http://localhost:5000';
 
 const CATEGORIES = [
   { id: 'all',       label: 'All Listings',  icon: ShoppingCart, color: 'bg-gray-800'   },
-  { id: 'livestock', label: 'Livestock',      icon: Tag,          color: 'bg-zunde-green'},
+  { id: 'livestock', label: 'Livestock',      icon: Tag,          color: 'bg-pfuma-green'},
   { id: 'feed',      label: 'Feed & Grain',   icon: Wheat,        color: 'bg-orange-500' },
   { id: 'produce',   label: 'Farm Produce',   icon: Leaf,         color: 'bg-lime-600'   },
   { id: 'medicine',  label: 'Medicine',       icon: Pill,         color: 'bg-blue-600'   },
@@ -51,14 +51,14 @@ const PostForm = ({ currentUser, onSubmit, onCancel, animals }) => {
     onSubmit({ ...form, price: parseFloat(form.price), quantity: parseFloat(form.quantity) });
   };
 
-  const inputCls = 'w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-zunde-green outline-none font-medium text-sm transition';
+  const inputCls = 'w-full p-3 bg-gray-50 rounded-xl border-2 border-transparent focus:border-pfuma-green outline-none font-medium text-sm transition';
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
       <div className="flex justify-between items-center mb-5">
         <div>
           <h3 className="text-sm font-black text-gray-900">Post a Listing</h3>
-          <p className="text-[11px] text-gray-400 font-medium mt-0.5">Visible to all ZUNDE users — farmers, retailers, and suppliers</p>
+          <p className="text-[11px] text-gray-400 font-medium mt-0.5">Visible to all PFUMA users — farmers, retailers, and suppliers</p>
         </div>
         <button onClick={onCancel} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 transition">
           <X size={16} />
@@ -82,6 +82,12 @@ const PostForm = ({ currentUser, onSubmit, onCancel, animals }) => {
             </div>
           )}
         </div>
+        {form.category === 'livestock' && form.animal_id && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-medium flex items-start gap-2">
+            <ShieldCheck size={14} className="shrink-0 mt-0.5" />
+            <span>This listing links to a registered animal, so it needs Police sale-clearance (ownership &amp; brand papers checked) before it appears on the Marketplace.</span>
+          </div>
+        )}
         <div>
           <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Product / Item Name *</label>
           <input className={inputCls} type="text" required placeholder="e.g. Brahman Bull, Soya Meal, Borehole Pump" value={form.product_name} onChange={e => set('product_name', e.target.value)} />
@@ -110,7 +116,7 @@ const PostForm = ({ currentUser, onSubmit, onCancel, animals }) => {
           <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Description</label>
           <textarea className={inputCls + ' resize-none'} rows={3} placeholder="Describe your item — condition, certification, delivery options..." value={form.description} onChange={e => set('description', e.target.value)} />
         </div>
-        <button type="submit" className="w-full py-3.5 bg-zunde-green text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
+        <button type="submit" className="w-full py-3.5 bg-pfuma-green text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
           <CheckCircle size={15} /> Post Listing
         </button>
       </form>
@@ -133,7 +139,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
       const url = activeCategory === 'all'
         ? `${API}/listings`
         : `${API}/listings?category=${activeCategory}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${currentUser?.token}` } });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setListings(data);
@@ -146,19 +152,52 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeCategory]);
+  }, [activeCategory, currentUser?.token]);
 
   useEffect(() => { fetchListings(); }, [fetchListings]);
 
   const handlePost = async (formData) => {
-    const payload = { ...formData, user_id: 1 }; // user_id from current session
+    const needsClearance = formData.category === 'livestock' && formData.animal_id;
+    let message = needsClearance
+      ? 'Listing submitted for police clearance — it will appear here once approved.'
+      : 'Listing posted successfully.';
     try {
-      await fetch(`${API}/listings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    } catch { /* offline — add locally */ }
-    setListings(prev => [{ id: Date.now(), ...formData, seller_name: currentUser?.name || 'You', phone: currentUser?.phone || '', seller_province: currentUser?.province || '', status: 'available' }, ...prev]);
+      const res = await fetch(`${API}/listings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentUser?.token}` },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFeedback(data.error || 'Could not post — try again.'); setShowForm(false); setTimeout(() => setFeedback(null), 4000); return; }
+      if (data.message) message = data.message;
+    } catch { /* offline — reflect locally */ }
+    // Only show it immediately if it doesn't need clearance — a real clearance-gated
+    // listing only becomes visible once Police approves it via the backend.
+    if (!needsClearance) {
+      setListings(prev => [{ id: Date.now(), ...formData, seller_name: currentUser?.name || 'You', phone: currentUser?.phone || '', seller_province: currentUser?.province || '', status: 'available' }, ...prev]);
+    }
     setShowForm(false);
-    setFeedback('Listing posted successfully.');
-    setTimeout(() => setFeedback(null), 3000);
+    setFeedback(message);
+    setTimeout(() => setFeedback(null), 4000);
+  };
+
+  const handleBid = async (listing) => {
+    if (!currentUser) return;
+    const amount = window.prompt(`Enter your ${currentUser.role === 'Retailer' ? 'bid' : 'enquiry offer'} amount (USD) for "${listing.product_name}":`, listing.price);
+    if (!amount || isNaN(Number(amount))) return;
+    try {
+      const res = await fetch(`${API}/listings/${listing.id}/bid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentUser.token}` },
+        body: JSON.stringify({ amount: Number(amount) }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFeedback(data.error || 'Could not submit — try again.'); }
+      else { setFeedback(`Offer of USD ${Number(amount).toLocaleString()} sent to ${listing.seller_name}.`); }
+    } catch {
+      setFeedback('Offline — your offer could not be sent. Try again once the API is reachable.');
+    }
+    setTimeout(() => setFeedback(null), 4000);
   };
 
   const filtered = listings.filter(l =>
@@ -179,11 +218,11 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingCart size={15} className="text-yellow-400" />
-              <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[3px]">ZUNDE Marketplace · Powered by Addy's Backend</span>
+              <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[3px]">PFUMA Marketplace · Powered by Addy's Backend</span>
             </div>
             <h2 className="text-2xl font-black text-white leading-tight mb-1">Agri-Commerce Hub</h2>
             <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-lg">
-              Buy and sell livestock, feed, produce, medicine, and equipment — all in one place. Every listing is posted by a verified ZUNDE member with their contact details.
+              Buy and sell livestock, feed, produce, medicine, and equipment — all in one place. Every listing is posted by a verified PFUMA member with their contact details.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
@@ -200,7 +239,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
               </div>
             )}
             {canPost && (
-              <button onClick={() => setShowForm(p => !p)} className="flex items-center gap-2 bg-zunde-green text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-600 transition shadow-lg">
+              <button onClick={() => setShowForm(p => !p)} className="flex items-center gap-2 bg-pfuma-green text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-600 transition shadow-lg">
                 <Plus size={14} /> Post Listing
               </button>
             )}
@@ -225,7 +264,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
           <input
             type="text"
             placeholder="Search products, location, or seller..."
-            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-medium outline-none focus:ring-2 focus:ring-zunde-green/30 shadow-sm"
+            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-medium outline-none focus:ring-2 focus:ring-pfuma-green/30 shadow-sm"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -255,7 +294,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
       {/* Listings grid */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <RefreshCw size={24} className="animate-spin text-zunde-green" />
+          <RefreshCw size={24} className="animate-spin text-pfuma-green" />
           <span className="ml-3 text-sm font-medium text-gray-400">Loading listings...</span>
         </div>
       ) : filtered.length === 0 ? (
@@ -263,7 +302,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
           <ShoppingCart size={36} className="mx-auto text-gray-300 mb-3" />
           <p className="text-sm font-black text-gray-400">No listings found</p>
           <p className="text-xs text-gray-300 font-medium mt-1">{canPost ? 'Be the first to post in this category.' : 'Check back soon.'}</p>
-          {canPost && <button onClick={() => setShowForm(true)} className="mt-4 px-5 py-2.5 bg-zunde-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Post a Listing</button>}
+          {canPost && <button onClick={() => setShowForm(true)} className="mt-4 px-5 py-2.5 bg-pfuma-green text-white rounded-xl text-xs font-black uppercase hover:bg-green-700 transition">Post a Listing</button>}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -276,8 +315,8 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
                     {listing.category}
                   </span>
                   {listing.category === 'livestock' && (
-                    <span className="flex items-center gap-1 text-[9px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full uppercase">
-                      <ShieldCheck size={9} /> Certified
+                    <span className="flex items-center gap-1 text-[9px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full uppercase" title="This livestock listing was reviewed and cleared by Police before going live">
+                      <ShieldCheck size={9} /> Police Cleared
                     </span>
                   )}
                 </div>
@@ -324,7 +363,7 @@ const Marketplace = ({ currentUser, animals = [], onListAnimal }) => {
                       <Phone size={11} /> Call
                     </a>
                   )}
-                  <button className="flex items-center gap-1.5 px-4 py-2 bg-zunde-green text-white rounded-xl text-[10px] font-black uppercase hover:bg-green-700 transition shadow-sm">
+                  <button onClick={() => handleBid(listing)} className="flex items-center gap-1.5 px-4 py-2 bg-pfuma-green text-white rounded-xl text-[10px] font-black uppercase hover:bg-green-700 transition shadow-sm">
                     <ArrowRight size={12} />
                     {currentUser?.role === 'Retailer' ? 'Bid' : 'Enquire'}
                   </button>

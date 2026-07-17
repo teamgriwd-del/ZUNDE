@@ -126,7 +126,7 @@ export default function IoTScreen() {
       {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.headerSub}>ZUNDE RaMambo</Text>
+          <Text style={s.headerSub}>PFUMA</Text>
           <Text style={s.headerTitle}>IoT Monitor</Text>
           <Text style={s.headerDesc}>Live animal sensor telemetry</Text>
         </View>

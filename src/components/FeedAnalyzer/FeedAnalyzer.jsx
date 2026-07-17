@@ -110,7 +110,7 @@ const FeedAnalyzer = () => {
 
       {/* How to use */}
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-start gap-3">
-        <Info size={16} className="text-zunde-green mt-0.5 shrink-0" />
+        <Info size={16} className="text-pfuma-green mt-0.5 shrink-0" />
         <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
           <span className="font-black text-gray-800">How to use:</span> Search for a feed type or filter by the species you farm. Click any card to see the full nutritional breakdown — use this to build a balanced diet for your livestock and avoid deficiencies.
         </p>
@@ -123,7 +123,7 @@ const FeedAnalyzer = () => {
           <input
             type="text"
             placeholder="Search feeds (e.g. Maize, Soya, Lucerne)..."
-            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-medium outline-none focus:ring-2 focus:ring-zunde-green/30 shadow-sm"
+            className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-medium outline-none focus:ring-2 focus:ring-pfuma-green/30 shadow-sm"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -131,7 +131,7 @@ const FeedAnalyzer = () => {
         <div className="flex gap-2 shrink-0 flex-wrap">
           {SPECIES.map(s => (
             <button key={s} onClick={() => setSpecies(s)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition border ${species === s ? 'bg-zunde-green text-white border-zunde-green shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-zunde-green'}`}>
+              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition border ${species === s ? 'bg-pfuma-green text-white border-pfuma-green shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-pfuma-green'}`}>
               {s === 'All Species' ? '🐾 All' : s === 'Cattle' ? '🐄' : s === 'Goat' ? '🐐' : s === 'Sheep' ? '🐑' : '🐖'} {s}
             </button>
           ))}
@@ -148,7 +148,7 @@ const FeedAnalyzer = () => {
       {/* Feed cards */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <RefreshCw size={24} className="animate-spin text-zunde-green" />
+          <RefreshCw size={24} className="animate-spin text-pfuma-green" />
           <span className="ml-3 text-sm font-medium text-gray-400">Loading feed database...</span>
         </div>
       ) : (
@@ -216,7 +216,7 @@ const FeedAnalyzer = () => {
                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">Suitable For</p>
                         <div className="flex gap-2 flex-wrap">
                           {species_list.map(s => (
-                            <span key={s} className="text-[10px] font-black bg-zunde-green/10 text-zunde-green px-3 py-1 rounded-full uppercase">
+                            <span key={s} className="text-[10px] font-black bg-pfuma-green/10 text-pfuma-green px-3 py-1 rounded-full uppercase">
                               {s === 'Cattle' ? '🐄' : s === 'Goat' ? '🐐' : s === 'Sheep' ? '🐑' : '🐖'} {s}
                             </span>
                           ))}

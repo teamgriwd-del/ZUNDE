@@ -1,10 +1,10 @@
 -- ============================================================
--- ZUNDE RaMambo — Unified Database Schema
+-- PFUMA — Unified Database Schema
 -- Covers: Web App (Arnold) + Mobile App (Addy) + Flask API
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS zunde;
-USE zunde;
+CREATE DATABASE IF NOT EXISTS pfuma;
+USE pfuma;
 
 -- ── USERS ────────────────────────────────────────────────────
 -- Shared between web + mobile. Populated from the AuthPortal.
@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name     VARCHAR(120) NOT NULL,
   phone         VARCHAR(20)  NOT NULL,
   email         VARCHAR(120),
-  role          ENUM('Farmer','Veterinarian','Supplier','Retailer') NOT NULL,
+  role          ENUM('Farmer','Veterinarian','Supplier','Retailer','Police') NOT NULL,
   org_name      VARCHAR(120),          -- farm/business/practice name
   province      VARCHAR(60),
   district      VARCHAR(60),
@@ -28,8 +28,20 @@ CREATE TABLE IF NOT EXISTS users (
   business_reg   VARCHAR(60),
   supply_categories VARCHAR(200),      -- comma-separated
   trading_areas  VARCHAR(200),
+  -- Police-specific
+  badge_number   VARCHAR(40),
+  station        VARCHAR(120),
+  jurisdiction_province VARCHAR(60),
+  -- Auth & signup verification
+  password_hash  VARCHAR(255),
+  verification_status ENUM('pending','verified','rejected') DEFAULT 'pending',
+  verified_by    INT NULL,             -- FK → users.id (reviewer: Police, or a peer Vet)
+  verification_notes TEXT,
+  id_document_path         VARCHAR(300),  -- national ID upload
+  credential_document_path VARCHAR(300),  -- DVS license / business reg / land proof upload
   avatar_seed    VARCHAR(80),
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- ── ANIMALS ──────────────────────────────────────────────────
@@ -96,6 +108,8 @@ CREATE TABLE IF NOT EXISTS medicine_inventory (
 -- ── MARKETPLACE LISTINGS ──────────────────────────────────────
 -- Addy's marketplace — covers both livestock (linked to animals)
 -- and agri-produce/feed. animal_id is NULL for non-livestock items.
+-- Livestock listings start 'pending_clearance' and only become
+-- 'available' once Police clears the matching sale_clearances row.
 CREATE TABLE IF NOT EXISTS marketplace_listings (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   user_id      INT NOT NULL,           -- FK → users.id (seller)
@@ -107,10 +121,43 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   quantity     DECIMAL(10,2) DEFAULT 1,
   location     VARCHAR(120),
   description  TEXT,
-  status       ENUM('available','sold','withdrawn') DEFAULT 'available',
+  status       ENUM('pending_clearance','available','sold','withdrawn') DEFAULT 'available',
   created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id)   REFERENCES users(id)   ON DELETE CASCADE,
   FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL
+);
+
+-- ── SALE CLEARANCES ───────────────────────────────────────────
+-- Police sign-off that a livestock sale's papers (ownership, brand,
+-- movement permit) are legitimate before the listing goes live.
+CREATE TABLE IF NOT EXISTS sale_clearances (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  animal_id     INT NOT NULL,
+  listing_id    INT,
+  seller_id     INT NOT NULL,
+  status        ENUM('pending','cleared','rejected') DEFAULT 'pending',
+  movement_permit_number VARCHAR(80),
+  officer_id    INT,                   -- FK → users.id (Police, once resolved)
+  notes         TEXT,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at   TIMESTAMP NULL,
+  FOREIGN KEY (animal_id)  REFERENCES animals(id) ON DELETE CASCADE,
+  FOREIGN KEY (listing_id) REFERENCES marketplace_listings(id) ON DELETE SET NULL,
+  FOREIGN KEY (seller_id)  REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (officer_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ── MARKETPLACE BIDS ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bids (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  listing_id  INT NOT NULL,
+  bidder_id   INT NOT NULL,
+  amount      DECIMAL(10,2) NOT NULL,
+  message     VARCHAR(300),
+  status      ENUM('pending','accepted','declined') DEFAULT 'pending',
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (listing_id) REFERENCES marketplace_listings(id) ON DELETE CASCADE,
+  FOREIGN KEY (bidder_id)  REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- ── VET CASES / MESSAGES ─────────────────────────────────────
@@ -158,23 +205,44 @@ CREATE TABLE IF NOT EXISTS feed_types (
   suitable_for     VARCHAR(200)         -- comma-separated species
 );
 
+-- ── IOT DEVICES ────────────────────────────────────────────────
+-- Physical collar/base-station pairing: a farmer claims a device by
+-- its printed serial number from the app's IoT tab.
+CREATE TABLE IF NOT EXISTS iot_devices (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  device_serial VARCHAR(60) NOT NULL UNIQUE,
+  animal_id     INT,                   -- FK → animals.id (NULL until attached to an animal)
+  owner_id      INT NOT NULL,          -- FK → users.id (farmer who paired it)
+  paired_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL,
+  FOREIGN KEY (owner_id)  REFERENCES users(id)   ON DELETE CASCADE
+);
+
 -- ── SEED DATA ─────────────────────────────────────────────────
+-- Demo password for every seeded account below: Pfuma2026!
+-- (bcrypt hash generated once — do not reuse this hash pattern for real accounts)
+
+-- Demo user: Police (seed admin account — Police signups are not self-service; a real
+-- deployment would provision officer accounts out-of-band, e.g. via ZRP/DVS liaison).
+-- Inserted first since other seed users reference it as their verifier.
+INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, badge_number, station, jurisdiction_province, password_hash, verification_status)
+VALUES (5, 'Officer Farai Chikwanha', '+263 77 500 0005', 'fchikwanha@zrp.gov.zw', 'Police', 'ZRP Stock Theft Unit', 'Mashonaland West', 'ZRP-STU-0231', 'Chegutu Police Station', 'Mashonaland West', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified');
 
 -- Demo user: Farmer Arnold
-INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, district, farm_size_ha, species_farmed)
-VALUES (1, 'Arnold Mapindu', '+263 77 100 0001', 'arnold@example.com', 'Farmer', 'Mapindu Family Farm', 'Mashonaland West', 'Zvimba', 50.0, 'Cattle,Goat');
+INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, district, farm_size_ha, species_farmed, password_hash, verification_status, verified_by)
+VALUES (1, 'Arnold Mapindu', '+263 77 100 0001', 'arnold@example.com', 'Farmer', 'Mapindu Family Farm', 'Mashonaland West', 'Zvimba', 50.0, 'Cattle,Goat', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Vet
-INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, license_number, speciality)
-VALUES (2, 'Dr T. Moyo', '+263 77 200 0002', 'tmoyo@dvs.gov.zw', 'Veterinarian', 'DVS Mashonaland West', 'Mashonaland West', 'DVS-ZIM-2024-0045', 'Tick-borne Diseases');
+INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, license_number, speciality, password_hash, verification_status, verified_by)
+VALUES (2, 'Dr T. Moyo', '+263 77 200 0002', 'tmoyo@dvs.gov.zw', 'Veterinarian', 'DVS Mashonaland West', 'Mashonaland West', 'DVS-ZIM-2024-0045', 'Tick-borne Diseases', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Supplier
-INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, supply_categories)
-VALUES (3, 'Chido Ncube', '+263 77 300 0003', 'Supplier', 'AgroChem Zimbabwe', 'Harare', 'BP-12345/2024', 'Vaccines,Antibiotics,Antiparasitcs');
+INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, supply_categories, password_hash, verification_status, verified_by)
+VALUES (3, 'Chido Ncube', '+263 77 300 0003', 'Supplier', 'AgroChem Zimbabwe', 'Harare', 'BP-12345/2024', 'Vaccines,Antibiotics,Antiparasitcs', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Retailer
-INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, trading_areas)
-VALUES (4, 'ZimAgro Enterprise', '+263 77 400 0004', 'Retailer', 'ZimAgro Ltd', 'Harare', 'BP-67890/2023', 'Mashonaland West,Midlands,Harare');
+INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, trading_areas, password_hash, verification_status, verified_by)
+VALUES (4, 'ZimAgro Enterprise', '+263 77 400 0004', 'Retailer', 'ZimAgro Ltd', 'Harare', 'BP-67890/2023', 'Mashonaland West,Midlands,Harare', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo animals (owned by Arnold)
 INSERT IGNORE INTO animals (id, owner_id, name, species, breed, birth_date, tag_id, brand_id, birth_weight, current_weight, for_sale)
@@ -203,9 +271,13 @@ VALUES
   (1, 'Buparvaquone',         120, 'ml', 50,  'VetDirect',    85),
   (1, 'Albendazole',         1000, 'ml', 200, 'AgroChem Zim', 15);
 
--- Marketplace listing for Thunder (linked to animal)
-INSERT IGNORE INTO marketplace_listings (user_id, animal_id, product_name, category, price, unit, quantity, location, description, status)
-VALUES (1, 102, 'Thunder — Angus Cattle', 'livestock', 770, 'head', 1, 'Zvimba, Mashonaland West', 'Healthy 1y 9m Angus bull. DVS certified. Verified health passport.', 'available');
+-- Marketplace listing for Thunder (linked to animal) — already cleared for demo purposes
+INSERT IGNORE INTO marketplace_listings (id, user_id, animal_id, product_name, category, price, unit, quantity, location, description, status)
+VALUES (201, 1, 102, 'Thunder — Angus Cattle', 'livestock', 770, 'head', 1, 'Zvimba, Mashonaland West', 'Healthy 1y 9m Angus bull. DVS certified. Verified health passport.', 'available');
+
+-- Matching sale clearance for Thunder's listing — approved by the demo Police account
+INSERT IGNORE INTO sale_clearances (animal_id, listing_id, seller_id, status, movement_permit_number, officer_id, notes, resolved_at)
+VALUES (102, 201, 1, 'cleared', 'DVS-MP-2026-00417', 5, 'Ownership and brand verified against ZRP stock register. Cleared for sale.', NOW());
 
 -- Marketplace listings from Addy's demo data
 INSERT IGNORE INTO marketplace_listings (user_id, product_name, category, price, unit, quantity, location, description, status)

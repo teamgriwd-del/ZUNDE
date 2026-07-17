@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import {
   Sprout, ShoppingBag, Truck, ArrowRight, ArrowLeft,
-  Phone, Mail, MapPin, Building2, CheckCircle, Stethoscope,
+  Phone, Mail, MapPin, Building2, CheckCircle, Stethoscope, Shield,
+  Lock, Upload, AlertTriangle,
 } from 'lucide-react';
+
+const API = 'http://localhost:5000';
 
 // ── data ───────────────────────────────────────────────────────────────────
 const ROLES = [
   {
     name: 'Farmer',
     icon: Sprout,
-    color: 'bg-zunde-green',
-    border: 'border-zunde-green',
+    color: 'bg-pfuma-green',
+    border: 'border-pfuma-green',
     desc: 'Register your herd, track health, sell livestock and order medicines.',
   },
   {
@@ -33,6 +36,13 @@ const ROLES = [
     color: 'bg-purple-600',
     border: 'border-purple-600',
     desc: 'Browse certified livestock listings and acquire trade certificates.',
+  },
+  {
+    name: 'Police',
+    icon: Shield,
+    color: 'bg-red-700',
+    border: 'border-red-700',
+    desc: 'Verify livestock papers and clear sales before they go live.',
   },
 ];
 
@@ -70,21 +80,23 @@ const Field = ({ label, required, children }) => (
   </div>
 );
 
-const inputCls = 'w-full p-3.5 bg-gray-50 rounded-xl border-2 border-transparent focus:border-zunde-green outline-none font-semibold text-sm text-gray-800 placeholder:text-gray-400 transition';
+const inputCls = 'w-full p-3.5 bg-gray-50 rounded-xl border-2 border-transparent focus:border-pfuma-green outline-none font-semibold text-sm text-gray-800 placeholder:text-gray-400 transition';
 const selectCls = inputCls + ' appearance-none cursor-pointer';
 
 // ── component ──────────────────────────────────────────────────────────────
 const AuthPortal = ({ onLogin }) => {
   const [step, setStep] = useState(0);          // 0-4
   const [isReturning, setIsReturning] = useState(true);  // login vs register
-  const [loginName, setLoginName] = useState('');
-  const [loginRole, setLoginRole] = useState('Farmer');
+  const [loginPhone, setLoginPhone] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
 
   const [form, setForm] = useState({
     // step 0
     role: 'Farmer',
     // step 1 — personal
-    fullName: '', phone: '', email: '',
+    fullName: '', phone: '', email: '', password: '', confirmPassword: '',
     // step 2 — organisation
     orgName: '', province: 'Mashonaland West', district: '', physicalAddress: '',
     // step 3 — role-specific
@@ -96,6 +108,10 @@ const AuthPortal = ({ onLogin }) => {
     businessReg: '', supplyCategories: [],
     // retailer
     retailerReg: '', tradingAreas: '',
+    // police
+    badgeNumber: '', station: '', jurisdictionProvince: 'Mashonaland West',
+    // verification documents (required for every role)
+    idDocument: null, credentialDocument: null,
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -104,53 +120,105 @@ const AuthPortal = ({ onLogin }) => {
   const role     = ROLES.find(r => r.name === form.role) || ROLES[0];
   const districts = DISTRICTS[form.province] || [];
 
-  const buildUser = () => ({
-    name:     form.fullName,
-    phone:    form.phone,
-    email:    form.email,
-    org:      form.orgName,
-    province: form.province,
-    district: form.district,
-    address:  form.physicalAddress,
-    role:     form.role,
-    // role extras
-    farmSize:          form.farmSize,
-    species:           form.species,
-    licenseNumber:     form.licenseNumber,
-    speciality:        form.speciality,
-    businessReg:       form.businessReg || form.retailerReg,
-    supplyCategories:  form.supplyCategories,
-    tradingAreas:      form.tradingAreas,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${form.fullName || 'ZUNDE'}`,
+  // Maps the backend's snake_case user record (+ JWT) into the shape the rest
+  // of the app expects, so App.jsx doesn't need to know about the API layer.
+  const userFromApi = (apiUser, token) => ({
+    id: apiUser.id,
+    token,
+    name: apiUser.full_name,
+    phone: apiUser.phone,
+    email: apiUser.email,
+    org: apiUser.org_name,
+    province: apiUser.province,
+    district: apiUser.district,
+    address: apiUser.address,
+    role: apiUser.role,
+    farmSize: apiUser.farm_size_ha,
+    species: (apiUser.species_farmed || '').split(',').filter(Boolean),
+    licenseNumber: apiUser.license_number,
+    speciality: apiUser.speciality,
+    businessReg: apiUser.business_reg,
+    supplyCategories: (apiUser.supply_categories || '').split(',').filter(Boolean),
+    tradingAreas: apiUser.trading_areas,
+    badgeNumber: apiUser.badge_number,
+    station: apiUser.station,
+    jurisdictionProvince: apiUser.jurisdiction_province,
+    verificationStatus: apiUser.verification_status,
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiUser.full_name || 'PFUMA'}`,
   });
 
-  // ── quick login ──
-  const handleLogin = (e) => {
+  // ── login ──
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!loginName.trim()) return;
-    onLogin({
-      name: loginName, role: loginRole, org: '', province: 'Mashonaland West',
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${loginName}`,
-    });
+    if (!loginPhone.trim() || !loginPassword) return;
+    setAuthError(''); setAuthBusy(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: loginPhone, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error || 'Login failed.'); return; }
+      onLogin(userFromApi(data.user, data.token));
+    } catch {
+      setAuthError('Could not reach the PFUMA API. Is the Flask backend running?');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  // ── registration ──
+  const register = async () => {
+    setAuthError(''); setAuthBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('full_name', form.fullName);
+      fd.append('phone', form.phone);
+      fd.append('email', form.email);
+      fd.append('password', form.password);
+      fd.append('role', form.role);
+      fd.append('org_name', form.orgName);
+      fd.append('province', form.province);
+      fd.append('district', form.district);
+      fd.append('address', form.physicalAddress);
+      fd.append('farm_size_ha', form.farmSize || '');
+      fd.append('species_farmed', form.species.join(','));
+      fd.append('license_number', form.licenseNumber);
+      fd.append('speciality', form.speciality);
+      fd.append('business_reg', form.businessReg || form.retailerReg);
+      fd.append('supply_categories', form.supplyCategories.join(','));
+      fd.append('trading_areas', form.tradingAreas);
+      if (form.idDocument) fd.append('id_document', form.idDocument);
+      if (form.credentialDocument) fd.append('credential_document', form.credentialDocument);
+
+      const res = await fetch(`${API}/auth/register`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error || 'Registration failed.'); return; }
+      onLogin(userFromApi(data.user, data.token));
+    } catch {
+      setAuthError('Could not reach the PFUMA API. Is the Flask backend running?');
+    } finally {
+      setAuthBusy(false);
+    }
   };
 
   // ── step validation ──
   const canAdvance = () => {
-    if (step === 1) return form.fullName.trim() && form.phone.trim();
+    if (step === 1) return form.fullName.trim() && form.phone.trim() && form.password.length >= 8 && form.password === form.confirmPassword;
     if (step === 2) return form.orgName.trim() && form.province;
     return true;
   };
 
   const advance  = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
   const back     = () => setStep(s => Math.max(s - 1, 0));
-  const confirm  = () => onLogin(buildUser());
+  const confirm  = () => register();
 
   // ── step renderers ──
   const renderStep0 = () => (
     <div className="space-y-4">
       <div>
         <h3 className="text-2xl font-black text-gray-900 mb-1">Choose Your Role</h3>
-        <p className="text-sm text-gray-400 font-medium">Your role determines what you can see and do on ZUNDE.</p>
+        <p className="text-sm text-gray-400 font-medium">Your role determines what you can see and do on PFUMA.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {ROLES.map(r => (
@@ -192,8 +260,23 @@ const AuthPortal = ({ onLogin }) => {
           <input className={inputCls + ' pl-10'} type="email" placeholder="you@example.com" value={form.email} onChange={e => set('email', e.target.value)} />
         </div>
       </Field>
+      <Field label="Password" required>
+        <div className="relative">
+          <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input className={inputCls + ' pl-10'} type="password" placeholder="At least 8 characters" value={form.password} onChange={e => set('password', e.target.value)} />
+        </div>
+      </Field>
+      <Field label="Confirm Password" required>
+        <div className="relative">
+          <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input className={inputCls + ' pl-10'} type="password" placeholder="Re-enter your password" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} />
+        </div>
+      </Field>
+      {form.password && form.confirmPassword && form.password !== form.confirmPassword && (
+        <p className="text-[10px] text-red-500 font-bold">Passwords don't match.</p>
+      )}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[10px] text-blue-700 font-medium">
-        Your phone number is used so farmers, vets, and suppliers can reach you directly through the ZUNDE directory.
+        Your phone number is used so farmers, vets, and suppliers can reach you directly through the PFUMA directory.
       </div>
     </div>
   );
@@ -206,14 +289,15 @@ const AuthPortal = ({ onLogin }) => {
           {form.role === 'Farmer' ? 'Your farm name and location.' :
            form.role === 'Veterinarian' ? 'Your practice or government department.' :
            form.role === 'Supplier' ? 'Your supply business details.' :
+           form.role === 'Police' ? 'Your unit and posting.' :
            'Your trading business details.'}
         </p>
       </div>
-      <Field label={form.role === 'Farmer' ? 'Farm Name' : 'Organisation / Business Name'} required>
+      <Field label={form.role === 'Farmer' ? 'Farm Name' : form.role === 'Police' ? 'Unit Name' : 'Organisation / Business Name'} required>
         <div className="relative">
           <Building2 size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className={inputCls + ' pl-10'} type="text"
-            placeholder={form.role === 'Farmer' ? 'e.g. Moyo Family Farm' : form.role === 'Veterinarian' ? 'e.g. DVS Mashonaland West' : 'e.g. AgroChem Zimbabwe'}
+            placeholder={form.role === 'Farmer' ? 'e.g. Moyo Family Farm' : form.role === 'Veterinarian' ? 'e.g. DVS Mashonaland West' : form.role === 'Police' ? 'e.g. ZRP Stock Theft Unit' : 'e.g. AgroChem Zimbabwe'}
             value={form.orgName} onChange={e => set('orgName', e.target.value)} />
         </div>
       </Field>
@@ -239,7 +323,7 @@ const AuthPortal = ({ onLogin }) => {
     </div>
   );
 
-  const renderStep3 = () => {
+  const roleFields = () => {
     if (form.role === 'Farmer') return (
       <div className="space-y-4">
         <div>
@@ -253,14 +337,14 @@ const AuthPortal = ({ onLogin }) => {
           <div className="flex flex-wrap gap-2 mt-1">
             {SPECIES_OPTIONS.map(s => (
               <button key={s} type="button" onClick={() => toggleArr('species', s)}
-                className={`px-3.5 py-2 rounded-xl border-2 text-xs font-black uppercase tracking-wide transition ${form.species.includes(s) ? 'bg-zunde-green text-white border-zunde-green' : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-zunde-green/40'}`}>
+                className={`px-3.5 py-2 rounded-xl border-2 text-xs font-black uppercase tracking-wide transition ${form.species.includes(s) ? 'bg-pfuma-green text-white border-pfuma-green' : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-pfuma-green/40'}`}>
                 {s}
               </button>
             ))}
           </div>
         </Field>
         <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-[11px] text-green-700 font-medium">
-          This helps the ZUNDE AI recommend the right vaccine schedules and dosages for your specific livestock.
+          This helps the PFUMA AI recommend the right vaccine schedules and dosages for your specific livestock.
         </div>
       </div>
     );
@@ -328,16 +412,68 @@ const AuthPortal = ({ onLogin }) => {
         </div>
       </div>
     );
+
+    if (form.role === 'Police') return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-2xl font-black text-gray-900 mb-1">Officer Details</h3>
+          <p className="text-sm text-gray-400 font-medium">Police accounts are provisioned and verified out-of-band (via ZRP/DVS liaison), not self-service — these details go into your verification request.</p>
+        </div>
+        <Field label="Badge / Service Number" required>
+          <input className={inputCls} type="text" placeholder="e.g. ZRP-STU-0231" value={form.badgeNumber} onChange={e => set('badgeNumber', e.target.value)} />
+        </Field>
+        <Field label="Station">
+          <input className={inputCls} type="text" placeholder="e.g. Chegutu Police Station" value={form.station} onChange={e => set('station', e.target.value)} />
+        </Field>
+        <Field label="Jurisdiction Province" required>
+          <select className={selectCls} value={form.jurisdictionProvince} onChange={e => set('jurisdictionProvince', e.target.value)}>
+            {PROVINCES.map(p => <option key={p}>{p}</option>)}
+          </select>
+        </Field>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-medium">
+          You will review pending Farmer/Supplier/Retailer signups and livestock sale-clearance requests for {form.jurisdictionProvince}. Your own account is activated by an existing verified officer, not automatically.
+        </div>
+      </div>
+    );
     return null;
   };
 
+  const FileField = ({ label, field, required }) => (
+    <Field label={label} required={required}>
+      <label className={`${inputCls} flex items-center gap-2.5 cursor-pointer`}>
+        <Upload size={15} className="text-gray-400 shrink-0" />
+        <span className="truncate">{form[field] ? form[field].name : 'Choose a PDF, JPG, or PNG...'}</span>
+        <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => set(field, e.target.files?.[0] || null)} />
+      </label>
+    </Field>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-4">
+      {roleFields()}
+      <div className="pt-2 border-t border-gray-100 space-y-4">
+        <div>
+          <h4 className="text-sm font-black text-gray-900 mb-1">Verification Documents</h4>
+          <p className="text-[11px] text-gray-400 font-medium">Required so Police (or, for vets, an existing verified vet) can confirm you're who you say you are before you get full access. See <span className="font-bold">compliance/signup-verification-requirements.md</span> for what's expected per role.</p>
+        </div>
+        <FileField label="National ID Document" field="idDocument" required />
+        <FileField
+          label={form.role === 'Farmer' ? 'Proof of Land / Farm (title, lease, or allocation letter)'
+            : form.role === 'Veterinarian' ? 'DVS Practice License'
+            : form.role === 'Police' ? 'Service Attestation Letter'
+            : 'Business Registration Certificate'}
+          field="credentialDocument"
+        />
+      </div>
+    </div>
+  );
+
   const renderStep4 = () => {
-    const user = buildUser();
     return (
       <div className="space-y-4">
         <div>
           <h3 className="text-2xl font-black text-gray-900 mb-1">Confirm Your Identity</h3>
-          <p className="text-sm text-gray-400 font-medium">Review your details before creating your ZUNDE Digital ID.</p>
+          <p className="text-sm text-gray-400 font-medium">Review your details before creating your PFUMA Digital ID.</p>
         </div>
         <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
           {/* Role badge */}
@@ -360,6 +496,11 @@ const AuthPortal = ({ onLogin }) => {
               (form.businessReg || form.retailerReg) && { label: 'Business Reg', value: form.businessReg || form.retailerReg },
               form.supplyCategories.length && { label: 'Products', value: form.supplyCategories.join(', ') },
               form.tradingAreas   && { label: 'Trading Areas', value: form.tradingAreas },
+              form.badgeNumber    && { label: 'Badge Number', value: form.badgeNumber },
+              form.station        && { label: 'Station', value: form.station },
+              form.role === 'Police' && { label: 'Jurisdiction', value: form.jurisdictionProvince },
+              { label: 'ID Document',         value: form.idDocument ? form.idDocument.name : 'Not attached' },
+              { label: 'Credential Document',  value: form.credentialDocument ? form.credentialDocument.name : 'Not attached' },
             ].filter(Boolean).map(f => f && (
               <div key={f.label}>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-wide">{f.label}</p>
@@ -368,9 +509,14 @@ const AuthPortal = ({ onLogin }) => {
             ))}
           </div>
         </div>
-        <div className="bg-zunde-green/5 border border-zunde-green/20 rounded-xl p-3 text-[11px] text-gray-600 font-medium leading-relaxed">
-          Your profile will be visible in the ZUNDE stakeholder directory. Other registered users — farmers, vets, suppliers, and retailers — can search for you by name, organisation, or province.
+        <div className="bg-pfuma-green/5 border border-pfuma-green/20 rounded-xl p-3 text-[11px] text-gray-600 font-medium leading-relaxed">
+          Your account starts <span className="font-black">pending verification</span> — {form.role === 'Veterinarian' ? 'an existing verified vet' : 'Police'} reviews your documents before you get full access. Your profile is only visible in the PFUMA directory once verified.
         </div>
+        {authError && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-bold">
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {authError}
+          </div>
+        )}
       </div>
     );
   };
@@ -381,22 +527,21 @@ const AuthPortal = ({ onLogin }) => {
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-gray-950 overflow-hidden font-sans">
       {/* Background glows */}
-      <div className="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] bg-zunde-green/20 rounded-full blur-[140px]" aria-hidden="true" />
+      <div className="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] bg-pfuma-green/20 rounded-full blur-[140px]" aria-hidden="true" />
       <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] bg-yellow-400/10 rounded-full blur-[140px]" aria-hidden="true" />
 
       <div className="bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex relative z-10 animate-in fade-in zoom-in duration-400" style={{ height: 680 }}>
 
         {/* ── Left branding panel ── */}
-        <div className="w-[38%] bg-zunde-green p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="w-[38%] bg-pfuma-green p-12 text-white flex flex-col justify-between relative overflow-hidden">
           {/* Dot grid */}
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} aria-hidden="true" />
 
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-zunde-green font-black text-2xl shadow-lg">R</div>
+              <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-pfuma-green font-black text-2xl shadow-lg">P</div>
               <div>
-                <p className="text-base font-black tracking-tight leading-none">ZUNDE</p>
-                <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[2px]">RaMambo</p>
+                <p className="text-base font-black tracking-tight leading-none">PFUMA</p>
               </div>
             </div>
             <h2 className="text-3xl font-black leading-tight mb-4">Zimbabwe's Livestock Intelligence Platform</h2>
@@ -428,37 +573,36 @@ const AuthPortal = ({ onLogin }) => {
             /* ── Quick Login ── */
             <div className="flex-1 overflow-y-auto p-12 text-left">
               <h3 className="text-2xl font-black text-gray-900 mb-1">Welcome Back</h3>
-              <p className="text-sm text-gray-400 font-medium mb-8">Select your role and enter your name to access the portal.</p>
+              <p className="text-sm text-gray-400 font-medium mb-8">Sign in with your phone number and password. Your role comes from your verified PFUMA account.</p>
 
               <form onSubmit={handleLogin} className="space-y-5">
-                {/* Role selector */}
-                <div className="grid grid-cols-2 gap-3">
-                  {ROLES.map(r => (
-                    <button key={r.name} type="button" onClick={() => setLoginRole(r.name)}
-                      className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition ${loginRole === r.name ? `${r.border} bg-gray-50 shadow-sm` : 'border-gray-100 hover:border-gray-200'}`}>
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${loginRole === r.name ? r.color : 'bg-gray-100'}`}>
-                        <r.icon size={16} className={loginRole === r.name ? 'text-white' : 'text-gray-400'} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-gray-800">{r.name}</p>
-                        <p className="text-[9px] text-gray-400 font-medium truncate">{r.desc.split('.')[0]}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                <Field label="Your Full Name" required>
-                  <input className={inputCls} type="text" placeholder="e.g. Tatenda Moyo" required value={loginName} onChange={e => setLoginName(e.target.value)} />
+                <Field label="Phone Number" required>
+                  <div className="relative">
+                    <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input className={inputCls + ' pl-10'} type="tel" placeholder="+263 77 123 4567" required value={loginPhone} onChange={e => setLoginPhone(e.target.value)} />
+                  </div>
+                </Field>
+                <Field label="Password" required>
+                  <div className="relative">
+                    <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input className={inputCls + ' pl-10'} type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} />
+                  </div>
                 </Field>
 
-                <button type="submit" className="w-full py-4 bg-zunde-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
-                  Enter Portal <ArrowRight size={15} />
+                {authError && (
+                  <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-[11px] text-red-700 font-bold">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" /> {authError}
+                  </div>
+                )}
+
+                <button type="submit" disabled={authBusy} className="w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50">
+                  {authBusy ? 'Signing In…' : 'Enter Portal'} {!authBusy && <ArrowRight size={15} />}
                 </button>
               </form>
 
               <p className="mt-8 text-center text-xs text-gray-400 font-medium">
-                New to ZUNDE?{' '}
-                <button onClick={() => { setIsReturning(false); setStep(0); }} className="text-zunde-green font-black hover:underline uppercase tracking-widest">
+                New to PFUMA?{' '}
+                <button onClick={() => { setIsReturning(false); setStep(0); setAuthError(''); }} className="text-pfuma-green font-black hover:underline uppercase tracking-widest">
                   Create Digital ID
                 </button>
               </p>
@@ -472,17 +616,17 @@ const AuthPortal = ({ onLogin }) => {
                 <div className="flex items-center gap-1 mb-2">
                   {STEPS.map((s, i) => (
                     <React.Fragment key={s}>
-                      <div className={`flex items-center gap-1.5 ${i <= step ? 'text-zunde-green' : 'text-gray-300'}`}>
+                      <div className={`flex items-center gap-1.5 ${i <= step ? 'text-pfuma-green' : 'text-gray-300'}`}>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border-2 transition ${
-                          i < step  ? 'bg-zunde-green border-zunde-green text-white' :
-                          i === step ? 'border-zunde-green text-zunde-green' :
+                          i < step  ? 'bg-pfuma-green border-pfuma-green text-white' :
+                          i === step ? 'border-pfuma-green text-pfuma-green' :
                           'border-gray-200 text-gray-300'
                         }`}>
                           {i < step ? '✓' : i + 1}
                         </div>
                         <span className={`text-[10px] font-black uppercase tracking-wide hidden sm:block ${i === step ? 'text-gray-700' : 'text-gray-300'}`}>{s}</span>
                       </div>
-                      {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${i < step ? 'bg-zunde-green' : 'bg-gray-100'}`} />}
+                      {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 rounded-full ${i < step ? 'bg-pfuma-green' : 'bg-gray-100'}`} />}
                     </React.Fragment>
                   ))}
                 </div>
@@ -504,23 +648,24 @@ const AuthPortal = ({ onLogin }) => {
                   <button
                     onClick={advance}
                     disabled={!canAdvance()}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-zunde-green text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-pfuma-green text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Continue <ArrowRight size={14} />
                   </button>
                 ) : (
                   <button
                     onClick={confirm}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-zunde-green text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-green-700 transition"
+                    disabled={authBusy}
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-pfuma-green text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-green-700 transition disabled:opacity-50"
                   >
-                    <CheckCircle size={15} /> Create Digital ID & Enter
+                    <CheckCircle size={15} /> {authBusy ? 'Creating…' : 'Create Digital ID & Enter'}
                   </button>
                 )}
               </div>
 
               <p className="pb-5 text-center text-xs text-gray-400 font-medium">
                 Already registered?{' '}
-                <button onClick={() => setIsReturning(true)} className="text-zunde-green font-black hover:underline uppercase tracking-widest">
+                <button onClick={() => setIsReturning(true)} className="text-pfuma-green font-black hover:underline uppercase tracking-widest">
                   Sign In
                 </button>
               </p>

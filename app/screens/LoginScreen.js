@@ -6,16 +6,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Sprout, Stethoscope, Pill, Store, User, Phone, Mail,
+  Sprout, Stethoscope, Pill, Store, Shield, User, Phone, Mail,
   Building2, MapPin, Check, CheckCircle, ArrowRight, ArrowLeft,
+  Lock, AlertTriangle,
 } from 'lucide-react-native';
-import { COLORS } from '../config';
+import { COLORS, API } from '../config';
 
 const ROLES = [
   { name: 'Farmer',       icon: Sprout,      color: COLORS.primary, desc: 'Register animals, track health, list for sale' },
   { name: 'Veterinarian', icon: Stethoscope, color: '#1565c0',      desc: 'Certify animals, manage outbreaks, consult farmers' },
   { name: 'Supplier',     icon: Pill,        color: '#e65100',      desc: 'Supply medicines and feed to farmers' },
   { name: 'Retailer',     icon: Store,       color: '#6a1b9a',      desc: 'Browse verified livestock and place bids' },
+  { name: 'Police',       icon: Shield,      color: '#c62828',      desc: 'Verify papers and clear livestock sales' },
 ];
 
 const PROVINCES = [
@@ -34,25 +36,104 @@ const InputField = ({ icon: Icon, ...props }) => (
   </View>
 );
 
+// Maps the backend's snake_case user record (+ JWT) into the shape the rest
+// of the app expects — mirrors src/components/IntelAI/AuthPortal.jsx on web.
+const userFromApi = (apiUser, token) => ({
+  id: apiUser.id,
+  token,
+  name: apiUser.full_name,
+  phone: apiUser.phone,
+  email: apiUser.email,
+  org: apiUser.org_name,
+  province: apiUser.province,
+  district: apiUser.district,
+  address: apiUser.address,
+  role: apiUser.role,
+  farmSize: apiUser.farm_size_ha,
+  species: (apiUser.species_farmed || '').split(',').filter(Boolean),
+  licenseNumber: apiUser.license_number,
+  speciality: apiUser.speciality,
+  businessReg: apiUser.business_reg,
+  supplyCategories: (apiUser.supply_categories || '').split(',').filter(Boolean),
+  tradingAreas: apiUser.trading_areas,
+  badgeNumber: apiUser.badge_number,
+  station: apiUser.station,
+  jurisdictionProvince: apiUser.jurisdiction_province,
+  verificationStatus: apiUser.verification_status,
+  avatar: apiUser.full_name,
+});
+
 export default function LoginScreen({ onLogin }) {
   const [mode,      setMode]      = useState('login');
   const [step,      setStep]      = useState(0);
-  const [loginName, setLoginName] = useState('');
-  const [loginRole, setLoginRole] = useState('Farmer');
+  const [loginPhone,    setLoginPhone]    = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authBusy,  setAuthBusy]  = useState(false);
   const [form, setForm] = useState({
-    role: 'Farmer', fullName: '', phone: '', email: '',
+    role: 'Farmer', fullName: '', phone: '', email: '', password: '', confirmPassword: '',
     orgName: '', province: 'Mashonaland West', district: '',
     farmSize: '', species: [], licenseNumber: '', speciality: '',
     businessReg: '', supplyCategories: [], tradingAreas: '',
+    badgeNumber: '', station: '', jurisdictionProvince: 'Mashonaland West',
   });
 
   const set       = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const toggleArr = (k, v) => setForm(p => ({ ...p, [k]: p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v] }));
   const role      = ROLES.find(r => r.name === form.role) || ROLES[0];
-  const canNext   = () => { if (step===1) return form.fullName.trim()&&form.phone.trim(); if (step===2) return form.orgName.trim(); return true; };
+  const canNext   = () => {
+    if (step===1) return form.fullName.trim() && form.phone.trim() && form.password.length >= 8 && form.password === form.confirmPassword;
+    if (step===2) return form.orgName.trim();
+    return true;
+  };
 
-  const handleLogin   = () => { if (!loginName.trim()) return; onLogin({ name: loginName, role: loginRole, org:'', province:'Mashonaland West', avatar: loginName }); };
-  const handleConfirm = () => { onLogin({ name: form.fullName, role: form.role, org: form.orgName, province: form.province, phone: form.phone, email: form.email, district: form.district, farmSize: form.farmSize, species: form.species, licenseNumber: form.licenseNumber, avatar: form.fullName }); };
+  const handleLogin = async () => {
+    if (!loginPhone.trim() || !loginPassword) return;
+    setAuthError(''); setAuthBusy(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: loginPhone, password: loginPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error || 'Login failed.'); return; }
+      onLogin(userFromApi(data.user, data.token));
+    } catch {
+      setAuthError('Could not reach the PFUMA API. Check that Flask is running and API in config.js points to your PC\'s IP.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    setAuthError(''); setAuthBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append('full_name', form.fullName);
+      fd.append('phone', form.phone);
+      fd.append('email', form.email);
+      fd.append('password', form.password);
+      fd.append('role', form.role);
+      fd.append('org_name', form.orgName);
+      fd.append('province', form.province);
+      fd.append('district', form.district);
+      fd.append('farm_size_ha', form.farmSize || '');
+      fd.append('species_farmed', form.species.join(','));
+      fd.append('license_number', form.licenseNumber);
+      fd.append('speciality', form.speciality);
+      fd.append('business_reg', form.businessReg);
+      fd.append('trading_areas', form.tradingAreas);
+
+      const res = await fetch(`${API}/auth/register`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error || 'Registration failed.'); return; }
+      onLogin(userFromApi(data.user, data.token));
+    } catch {
+      setAuthError('Could not reach the PFUMA API. Check that Flask is running and API in config.js points to your PC\'s IP.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   const ProgressBar = () => (
     <View style={styles.progress}>
@@ -72,7 +153,7 @@ export default function LoginScreen({ onLogin }) {
   const renderStep0 = () => (
     <View>
       <Text style={styles.stepTitle}>Choose Your Role</Text>
-      <Text style={styles.stepSub}>Your role determines what you can see and do on ZUNDE.</Text>
+      <Text style={styles.stepSub}>Your role determines what you can see and do on PFUMA.</Text>
       <View style={styles.roleGrid}>
         {ROLES.map(r => (
           <TouchableOpacity key={r.name} activeOpacity={0.8}
@@ -99,7 +180,14 @@ export default function LoginScreen({ onLogin }) {
       <InputField icon={Phone} placeholder="+263 77 123 4567"   value={form.phone}    onChangeText={v=>set('phone',v)}    keyboardType="phone-pad" />
       <Text style={styles.label}>Email Address</Text>
       <InputField icon={Mail}  placeholder="you@example.com"    value={form.email}    onChangeText={v=>set('email',v)}    keyboardType="email-address" />
-      <View style={styles.infoBox}><Text style={styles.infoText}>Your phone number lets farmers, vets, and suppliers find and contact you directly in the ZUNDE directory.</Text></View>
+      <Text style={styles.label}>Password *</Text>
+      <InputField icon={Lock} placeholder="At least 8 characters" value={form.password} onChangeText={v=>set('password',v)} secureTextEntry />
+      <Text style={styles.label}>Confirm Password *</Text>
+      <InputField icon={Lock} placeholder="Re-enter your password" value={form.confirmPassword} onChangeText={v=>set('confirmPassword',v)} secureTextEntry />
+      {!!form.password && !!form.confirmPassword && form.password !== form.confirmPassword && (
+        <Text style={{ color: COLORS.danger, fontSize: 11, fontWeight: '700', marginBottom: 10 }}>Passwords don't match.</Text>
+      )}
+      <View style={styles.infoBox}><Text style={styles.infoText}>Your phone number lets farmers, vets, and suppliers find and contact you directly in the PFUMA directory.</Text></View>
     </View>
   );
 
@@ -158,6 +246,25 @@ export default function LoginScreen({ onLogin }) {
         </View>
       </View>
     );
+    if (form.role==='Police') return (
+      <View>
+        <Text style={styles.stepTitle}>Officer Details</Text>
+        <Text style={styles.stepSub}>Police accounts are provisioned and verified out-of-band (via ZRP/DVS liaison), not self-service — these details go into your verification request.</Text>
+        <Text style={styles.label}>Badge / Service Number</Text>
+        <TextInput style={inp} placeholder="e.g. ZRP-STU-0231" value={form.badgeNumber} onChangeText={v=>set('badgeNumber',v)} placeholderTextColor="#aaa" />
+        <Text style={styles.label}>Station</Text>
+        <TextInput style={inp} placeholder="e.g. Chegutu Police Station" value={form.station} onChangeText={v=>set('station',v)} placeholderTextColor="#aaa" />
+        <Text style={styles.label}>Jurisdiction Province</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }}>
+          {PROVINCES.map(p => (
+            <TouchableOpacity key={p} activeOpacity={0.8} onPress={() => set('jurisdictionProvince',p)}
+              style={[styles.chip, form.jurisdictionProvince===p && { backgroundColor:'#c62828', borderColor:'#c62828' }]}>
+              <Text style={[styles.chipText, form.jurisdictionProvince===p && { color:'#fff' }]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
     return (
       <View>
         <Text style={styles.stepTitle}>{form.role==='Supplier' ? 'Supply Details' : 'Trading Details'}</Text>
@@ -173,7 +280,7 @@ export default function LoginScreen({ onLogin }) {
   const renderStep4 = () => (
     <View>
       <Text style={styles.stepTitle}>Confirm Your Identity</Text>
-      <Text style={styles.stepSub}>Review before creating your ZUNDE Digital ID.</Text>
+      <Text style={styles.stepSub}>Review before creating your PFUMA Digital ID.</Text>
       <View style={[styles.confirmCard, { borderLeftColor: role.color }]}>
         <View style={[styles.roleBadge, { backgroundColor: role.color }]}>
           <role.icon size={13} color="#fff" />
@@ -193,7 +300,7 @@ export default function LoginScreen({ onLogin }) {
           </View>
         ))}
       </View>
-      <View style={styles.infoBox}><Text style={styles.infoText}>Your profile will be visible in the ZUNDE stakeholder directory. Others can search for you by name, organisation, or province.</Text></View>
+      <View style={styles.infoBox}><Text style={styles.infoText}>Your profile will be visible in the PFUMA stakeholder directory. Others can search for you by name, organisation, or province.</Text></View>
     </View>
   );
 
@@ -209,9 +316,9 @@ export default function LoginScreen({ onLogin }) {
           <View style={styles.headerGlow1} />
           <View style={styles.headerGlow2} />
           <View style={styles.headerTop}>
-            <View style={styles.logoBox}><Text style={styles.logoText}>R</Text></View>
+            <View style={styles.logoBox}><Text style={styles.logoText}>P</Text></View>
             <View style={{ flex:1 }}>
-              <Text style={styles.appName}>ZUNDE RaMambo</Text>
+              <Text style={styles.appName}>PFUMA</Text>
               <Text style={styles.appTagline}>Zimbabwe's Livestock Intelligence Platform</Text>
             </View>
           </View>
@@ -232,33 +339,35 @@ export default function LoginScreen({ onLogin }) {
           {mode === 'login' ? (
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={styles.cardTitle}>Welcome Back</Text>
-              <Text style={styles.cardSub}>Select your role to access the portal</Text>
-              <View style={styles.roleGrid}>
-                {ROLES.map(r => (
-                  <TouchableOpacity key={r.name} activeOpacity={0.8}
-                    style={[styles.roleCard, loginRole===r.name && { borderColor:r.color, backgroundColor:r.color+'0d' }]}
-                    onPress={() => setLoginRole(r.name)}>
-                    <View style={[styles.roleIconBox, { backgroundColor: r.color+'1a' }]}>
-                      <r.icon size={22} color={r.color} />
-                    </View>
-                    <Text style={[styles.roleName, loginRole===r.name && { color:r.color }]}>{r.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.label}>Your Full Name</Text>
-              <TextInput style={inp} placeholder="e.g. Tatenda Moyo" value={loginName} onChangeText={setLoginName} placeholderTextColor="#aaa" />
-              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: ROLES.find(r=>r.name===loginRole)?.color||COLORS.primary }]} onPress={handleLogin} activeOpacity={0.85}>
-                <Text style={styles.primaryBtnText}>Enter Portal</Text>
-                <ArrowRight size={16} color="#fff" />
+              <Text style={styles.cardSub}>Sign in with your phone number and password. Your role comes from your verified PFUMA account.</Text>
+              <Text style={styles.label}>Phone Number *</Text>
+              <InputField icon={Phone} placeholder="+263 77 123 4567" value={loginPhone} onChangeText={setLoginPhone} keyboardType="phone-pad" />
+              <Text style={styles.label}>Password *</Text>
+              <InputField icon={Lock} placeholder="Your password" value={loginPassword} onChangeText={setLoginPassword} secureTextEntry />
+              {!!authError && (
+                <View style={[styles.infoBox, { backgroundColor: COLORS.dangerBg, flexDirection:'row', gap:8, alignItems:'flex-start' }]}>
+                  <AlertTriangle size={14} color={COLORS.danger} style={{ marginTop:1 }} />
+                  <Text style={[styles.infoText, { color: COLORS.danger, flex:1 }]}>{authError}</Text>
+                </View>
+              )}
+              <TouchableOpacity disabled={authBusy} style={[styles.primaryBtn, { backgroundColor: COLORS.primary, opacity: authBusy?0.6:1 }]} onPress={handleLogin} activeOpacity={0.85}>
+                <Text style={styles.primaryBtnText}>{authBusy ? 'Signing In…' : 'Enter Portal'}</Text>
+                {!authBusy && <ArrowRight size={16} color="#fff" />}
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setMode('register'); setStep(0); }} style={styles.switchLink}>
-                <Text style={styles.switchText}>New to ZUNDE? <Text style={{ color:COLORS.primary, fontWeight:'800' }}>Create Digital ID</Text></Text>
+              <TouchableOpacity onPress={() => { setMode('register'); setStep(0); setAuthError(''); }} style={styles.switchLink}>
+                <Text style={styles.switchText}>New to PFUMA? <Text style={{ color:COLORS.primary, fontWeight:'800' }}>Create Digital ID</Text></Text>
               </TouchableOpacity>
             </ScrollView>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <ProgressBar />
               {steps[step]()}
+              {!!authError && step === STEPS.length - 1 && (
+                <View style={[styles.infoBox, { backgroundColor: COLORS.dangerBg, flexDirection:'row', gap:8, alignItems:'flex-start' }]}>
+                  <AlertTriangle size={14} color={COLORS.danger} style={{ marginTop:1 }} />
+                  <Text style={[styles.infoText, { color: COLORS.danger, flex:1 }]}>{authError}</Text>
+                </View>
+              )}
               <View style={styles.navRow}>
                 {step > 0 && (
                   <TouchableOpacity style={styles.backBtn} onPress={() => setStep(s=>s-1)} activeOpacity={0.8}>
@@ -272,13 +381,13 @@ export default function LoginScreen({ onLogin }) {
                     <ArrowRight size={16} color="#fff" />
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={[styles.primaryBtn,{flex:1}]} onPress={handleConfirm} activeOpacity={0.85}>
+                  <TouchableOpacity disabled={authBusy} style={[styles.primaryBtn,{flex:1, opacity: authBusy?0.6:1}]} onPress={handleConfirm} activeOpacity={0.85}>
                     <CheckCircle size={16} color="#fff" />
-                    <Text style={styles.primaryBtnText}>Create Digital ID</Text>
+                    <Text style={styles.primaryBtnText}>{authBusy ? 'Creating…' : 'Create Digital ID'}</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setMode('login')} style={styles.switchLink}>
+              <TouchableOpacity onPress={() => { setMode('login'); setAuthError(''); }} style={styles.switchLink}>
                 <Text style={styles.switchText}>Already registered? <Text style={{ color:COLORS.primary, fontWeight:'800' }}>Sign In</Text></Text>
               </TouchableOpacity>
             </ScrollView>

@@ -5,7 +5,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   Home, Users, ShoppingCart, Wheat, Wifi, MessageSquare,
-  User, ClipboardList, Package, Store,
+  User, ClipboardList, Package, Store, Shield,
 } from 'lucide-react-native';
 import { COLORS } from './config';
 
@@ -17,7 +17,7 @@ import FeedAnalyzerScreen from './screens/FeedAnalyzerScreen';
 import VetMessengerScreen from './screens/VetMessengerScreen';
 import ProfileScreen      from './screens/ProfileScreen';
 import IoTScreen          from './screens/IoTScreen';
-import JindaRaMamboFAB    from './components/JindaRaMamboFAB';
+import JindaFAB    from './components/JindaFAB';
 
 const Tab = createBottomTabNavigator();
 
@@ -53,11 +53,18 @@ const ROLE_TABS = {
     { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
     { name: 'Profile',   icon: User,          label: 'Profile', screen: ProfileScreen },
   ],
+  Police: [
+    { name: 'Dashboard', icon: Shield,        label: 'Home',    screen: DashboardScreen },
+    { name: 'Market',    icon: ShoppingCart,  label: 'Market',  screen: MarketplaceScreen },
+    { name: 'Vet',       icon: MessageSquare, label: 'Messages',screen: VetMessengerScreen },
+    { name: 'Profile',   icon: User,          label: 'Profile', screen: ProfileScreen },
+  ],
 };
 
 const ROLE_COLORS = {
   Farmer: COLORS.primary, Veterinarian: '#1565c0',
   Supplier: '#e65100',    Retailer: '#6a1b9a',
+  Police: '#c62828',
 };
 
 // ── Tab icon: pill highlight on active, clean spacing ──────────────────────
@@ -126,7 +133,7 @@ export default function App() {
             onLogout={() => setCurrentUser(null)}
           />
         </NavigationContainer>
-        <JindaRaMamboFAB currentUser={currentUser} />
+        <JindaFAB currentUser={currentUser} />
       </View>
     </SafeAreaProvider>
   );

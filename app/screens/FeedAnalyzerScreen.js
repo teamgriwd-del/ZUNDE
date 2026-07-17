@@ -122,7 +122,7 @@ export default function FeedAnalyzerScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSub}>ZUNDE RaMambo</Text>
+          <Text style={styles.headerSub}>PFUMA</Text>
           <Text style={styles.headerTitle}>Feed Analyzer</Text>
           <Text style={styles.headerDesc}>Zimbabwe livestock nutrition database · {feeds.length} feeds</Text>
         </View>

@@ -5,9 +5,11 @@ import {
 import {
   Activity, Thermometer, Heart, MapPin, AlertTriangle, CheckCircle,
   ShieldCheck, Zap, Signal, Gauge, Eye, RefreshCw, Info, Tag,
-  Wifi, WifiOff, ChevronDown, TrendingUp, TrendingDown, Minus
+  Wifi, WifiOff, ChevronDown, TrendingUp, TrendingDown, Minus, Link2, Plus
 } from 'lucide-react';
 import './HardwareSimulation.css';
+
+const API = 'http://localhost:5000';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const SAFE_ZONE = { lat: -17.3601, lon: 30.1918, radius: 0.005, name: 'Mashonaland Farm A' };
@@ -50,17 +52,17 @@ const RangeBar = ({ value, min, max, alert }) => {
         {/* normal zone highlight */}
         <div className="absolute h-full bg-green-100 rounded-full" style={{ left: `${lowPct}%`, width: `${highPct - lowPct}%` }} />
         {/* value marker */}
-        <div className={`absolute w-3 h-3 rounded-full -top-0.5 border-2 border-white shadow transition-all duration-700 ${alert ? 'bg-red-500' : 'bg-zunde-green'}`} style={{ left: `calc(${pct}% - 6px)` }} />
+        <div className={`absolute w-3 h-3 rounded-full -top-0.5 border-2 border-white shadow transition-all duration-700 ${alert ? 'bg-red-500' : 'bg-pfuma-green'}`} style={{ left: `calc(${pct}% - 6px)` }} />
       </div>
     </div>
   );
 };
 
 const VitalCard = ({ icon: Icon, label, value, unit, range, alert, trend, description }) => (
-  <div className={`bg-white p-5 rounded-2xl border-2 transition ${alert ? 'border-red-200 shadow-md shadow-red-50' : 'border-gray-100 hover:border-zunde-green/30'}`}>
+  <div className={`bg-white p-5 rounded-2xl border-2 transition ${alert ? 'border-red-200 shadow-md shadow-red-50' : 'border-gray-100 hover:border-pfuma-green/30'}`}>
     <div className="flex items-start justify-between mb-2">
       <div className="flex items-center gap-2">
-        <div className={`p-2 rounded-xl ${alert ? 'bg-red-50 text-red-500' : 'bg-green-50 text-zunde-green'}`}>
+        <div className={`p-2 rounded-xl ${alert ? 'bg-red-50 text-red-500' : 'bg-green-50 text-pfuma-green'}`}>
           <Icon size={18} aria-hidden="true" />
         </div>
         <span className="text-xs font-black text-gray-500 uppercase tracking-wider">{label}</span>
@@ -82,8 +84,98 @@ const VitalCard = ({ icon: Icon, label, value, unit, range, alert, trend, descri
   </div>
 );
 
+// ── Device pairing panel ──────────────────────────────────────────────────
+const DevicePairingPanel = ({ animals, currentUser }) => {
+  const [devices, setDevices]   = useState([]);
+  const [serial, setSerial]     = useState('');
+  const [animalId, setAnimalId] = useState('');
+  const [busy, setBusy]         = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const authHeaders = { Authorization: `Bearer ${currentUser?.token}` };
+
+  const loadDevices = useCallback(async () => {
+    if (!currentUser?.token) return;
+    try {
+      const res = await fetch(`${API}/iot-devices`, { headers: authHeaders });
+      if (res.ok) setDevices(await res.json());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch { /* offline — leave list as-is */ }
+  }, [currentUser?.token]);
+
+  useEffect(() => { loadDevices(); }, [loadDevices]);
+
+  const pairDevice = async (e) => {
+    e.preventDefault();
+    if (!serial.trim()) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`${API}/iot-devices/pair`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ device_serial: serial.trim(), animal_id: animalId || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFeedback(data.error || 'Could not pair — try again.'); }
+      else { setFeedback('Device paired.'); setSerial(''); setAnimalId(''); loadDevices(); }
+    } catch {
+      setFeedback('Offline — could not reach the PFUMA API to pair this device.');
+    } finally {
+      setBusy(false);
+      setTimeout(() => setFeedback(null), 3500);
+    }
+  };
+
+  if (currentUser?.role !== 'Farmer') return null;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <Link2 size={15} className="text-pfuma-green" />
+        <h4 className="text-sm font-black text-gray-800">Paired Devices</h4>
+      </div>
+      <p className="text-[11px] text-gray-400 font-medium mb-4">Claim a physical collar or base station by the serial number printed on it — see the "Connecting Your Physical Hardware" section of the IoT guide.</p>
+
+      {devices.length === 0 ? (
+        <p className="text-xs text-gray-400 font-medium italic mb-4">No devices paired yet.</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {devices.map(dv => (
+            <div key={dv.id} className="flex items-center justify-between gap-2 p-2.5 bg-gray-50 rounded-xl">
+              <div className="min-w-0">
+                <p className="text-[11px] font-black text-gray-800 truncate">{dv.device_serial}</p>
+                <p className="text-[10px] text-gray-400 font-medium truncate">{dv.animal_name ? `Attached to ${dv.animal_name}` : 'Not attached to an animal yet'}</p>
+              </div>
+              <ShieldCheck size={13} className="text-pfuma-green shrink-0" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {feedback && <div className="mb-3 text-[11px] font-bold text-pfuma-green bg-green-50 border border-green-200 rounded-xl p-2.5">{feedback}</div>}
+
+      <form onSubmit={pairDevice} className="space-y-2.5">
+        <input
+          type="text" placeholder="Device serial (e.g. BS-01-HNO or CN-014)"
+          className="w-full p-2.5 bg-gray-50 rounded-xl border-2 border-transparent focus:border-pfuma-green outline-none text-xs font-semibold"
+          value={serial} onChange={e => setSerial(e.target.value)}
+        />
+        <select
+          className="w-full p-2.5 bg-gray-50 rounded-xl border-2 border-transparent focus:border-pfuma-green outline-none text-xs font-semibold appearance-none"
+          value={animalId} onChange={e => setAnimalId(e.target.value)}
+        >
+          <option value="">Attach to an animal later</option>
+          {animals.map(a => <option key={a.id} value={a.id}>{a.name} ({a.species})</option>)}
+        </select>
+        <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-2.5 bg-pfuma-green text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition disabled:opacity-50">
+          <Plus size={13} /> {busy ? 'Pairing…' : 'Pair Device'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
 // ── Main Component ──────────────────────────────────────────────────────────
-const HardwareSimulation = ({ animals = [] }) => {
+const HardwareSimulation = ({ animals = [], currentUser }) => {
   const [selectedAnimalId, setSelectedAnimalId] = useState(animals[0]?.id ?? null);
   const [history, setHistory] = useState([]);
   const [currentData, setCurrentData] = useState({
@@ -188,7 +280,7 @@ const HardwareSimulation = ({ animals = [] }) => {
         <div className="relative z-10 flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Zap size={16} className="text-yellow-400" />
-            <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[3px]">ZUNDE Smart Ear Tag System</span>
+            <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[3px]">PFUMA Smart Ear Tag System</span>
           </div>
           <h2 className="text-2xl font-black text-white leading-tight mb-1">Live Animal Health Monitor</h2>
           <p className="text-gray-400 text-sm font-medium leading-relaxed max-w-lg">
@@ -220,7 +312,7 @@ const HardwareSimulation = ({ animals = [] }) => {
           <div className="flex gap-2">
             <button
               onClick={() => setIsRunning(p => !p)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${isRunning ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-zunde-green text-white hover:bg-green-600'}`}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition ${isRunning ? 'bg-white/10 text-gray-300 hover:bg-white/20' : 'bg-pfuma-green text-white hover:bg-green-600'}`}
               aria-label={isRunning ? 'Pause monitoring' : 'Resume monitoring'}
             >
               <RefreshCw size={12} className={isRunning ? 'animate-spin' : ''} />
@@ -247,8 +339,8 @@ const HardwareSimulation = ({ animals = [] }) => {
           ].map(s => (
             <div key={s.step} className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-zunde-green rounded-full flex items-center justify-center text-white text-[10px] font-black">{s.step}</div>
-                <s.icon size={14} className="text-zunde-green" />
+                <div className="w-6 h-6 bg-pfuma-green rounded-full flex items-center justify-center text-white text-[10px] font-black">{s.step}</div>
+                <s.icon size={14} className="text-pfuma-green" />
                 <span className="text-xs font-black text-gray-700">{s.title}</span>
               </div>
               <p className="text-[11px] text-gray-500 font-medium leading-relaxed">{s.desc}</p>
@@ -260,7 +352,7 @@ const HardwareSimulation = ({ animals = [] }) => {
       {/* ── ANIMAL SELECTOR ── */}
       <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2 text-xs font-black text-gray-500 uppercase tracking-widest shrink-0">
-          <Tag size={14} className="text-zunde-green" /> Monitoring Tag For:
+          <Tag size={14} className="text-pfuma-green" /> Monitoring Tag For:
         </div>
         {animals.length === 0 ? (
           <span className="text-sm text-gray-400 font-medium italic">No animals registered — add animals in Herd Registry first.</span>
@@ -272,8 +364,8 @@ const HardwareSimulation = ({ animals = [] }) => {
                 onClick={() => setSelectedAnimalId(a.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide border-2 transition ${
                   selectedAnimalId === a.id
-                    ? 'bg-zunde-green text-white border-zunde-green shadow-md'
-                    : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-zunde-green'
+                    ? 'bg-pfuma-green text-white border-pfuma-green shadow-md'
+                    : 'bg-gray-50 text-gray-500 border-gray-100 hover:border-pfuma-green'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-current opacity-60" />
@@ -300,7 +392,7 @@ const HardwareSimulation = ({ animals = [] }) => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-black text-gray-700 uppercase tracking-widest">
-                Live Health Readings {selectedAnimal && <span className="text-zunde-green">— {selectedAnimal.name}</span>}
+                Live Health Readings {selectedAnimal && <span className="text-pfuma-green">— {selectedAnimal.name}</span>}
               </h3>
               <span className="text-[10px] text-gray-400 font-medium">Updates every 5 sec · 3-point filtered</span>
             </div>
@@ -344,13 +436,13 @@ const HardwareSimulation = ({ animals = [] }) => {
                 <h4 className="text-sm font-black text-gray-800">Overall Vitality Score</h4>
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">Combined health index calculated from temperature, heart rate, and location safety</p>
               </div>
-              <strong className={`text-3xl font-black ${currentData.vitalityScore > 85 ? 'text-zunde-green' : currentData.vitalityScore > 60 ? 'text-orange-500' : 'text-red-500'}`}>
+              <strong className={`text-3xl font-black ${currentData.vitalityScore > 85 ? 'text-pfuma-green' : currentData.vitalityScore > 60 ? 'text-orange-500' : 'text-red-500'}`}>
                 {currentData.vitalityScore}%
               </strong>
             </div>
             <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden mt-3 shadow-inner" role="progressbar" aria-valuenow={currentData.vitalityScore} aria-valuemin={0} aria-valuemax={100} aria-label="Vitality score">
               <div
-                className={`h-full rounded-full transition-all duration-1000 ${currentData.vitalityScore > 85 ? 'bg-zunde-green' : currentData.vitalityScore > 60 ? 'bg-orange-400' : 'bg-red-500'}`}
+                className={`h-full rounded-full transition-all duration-1000 ${currentData.vitalityScore > 85 ? 'bg-pfuma-green' : currentData.vitalityScore > 60 ? 'bg-orange-400' : 'bg-red-500'}`}
                 style={{ width: `${currentData.vitalityScore}%` }}
               />
             </div>
@@ -367,7 +459,7 @@ const HardwareSimulation = ({ animals = [] }) => {
                 <p className="text-[11px] text-gray-400 font-medium mt-0.5">Rolling history of the last {MAX_HISTORY} readings — helps you spot gradual changes</p>
               </div>
               <div className="flex gap-4 text-[10px] font-bold text-gray-400 shrink-0">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-2 bg-zunde-green rounded inline-block" />Temp (°C)</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-2 bg-pfuma-green rounded inline-block" />Temp (°C)</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-2 bg-blue-400 rounded inline-block" />Heart Rate (BPM)</span>
               </div>
             </div>
@@ -406,6 +498,8 @@ const HardwareSimulation = ({ animals = [] }) => {
         {/* RIGHT 1/3 */}
         <div className="col-span-1 space-y-5">
 
+          <DevicePairingPanel animals={animals} currentUser={currentUser} />
+
           {/* Geofencing */}
           <div className="bg-gray-900 rounded-2xl p-5 relative overflow-hidden">
             <div className="relative z-10">
@@ -418,14 +512,14 @@ const HardwareSimulation = ({ animals = [] }) => {
               </p>
 
               <div className="flex justify-center mb-4">
-                <div className="w-44 h-44 rounded-full border-2 border-dashed border-zunde-green/30 flex items-center justify-center relative bg-zunde-green/5">
+                <div className="w-44 h-44 rounded-full border-2 border-dashed border-pfuma-green/30 flex items-center justify-center relative bg-pfuma-green/5">
                   {/* inner ring */}
-                  <div className="absolute inset-6 rounded-full border border-zunde-green/10" />
+                  <div className="absolute inset-6 rounded-full border border-pfuma-green/10" />
                   {/* farm label */}
                   <span className="absolute top-3 text-[8px] font-black text-gray-600 uppercase tracking-widest">{SAFE_ZONE.name}</span>
                   {/* animal dot */}
                   <div
-                    className={`w-4 h-4 rounded-full shadow-lg transition-all duration-1000 flex items-center justify-center ${currentData.isBreach ? 'bg-red-500' : 'bg-zunde-green'}`}
+                    className={`w-4 h-4 rounded-full shadow-lg transition-all duration-1000 flex items-center justify-center ${currentData.isBreach ? 'bg-red-500' : 'bg-pfuma-green'}`}
                     style={{ transform: `translate(${trackerOffset.x}px, ${trackerOffset.y}px)` }}
                     role="img"
                     aria-label={`${selectedAnimal?.name ?? 'Animal'}: ${currentData.isBreach ? 'outside safe zone' : 'inside safe zone'}`}
@@ -462,7 +556,7 @@ const HardwareSimulation = ({ animals = [] }) => {
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-zunde-green/5 rounded-full" aria-hidden="true" />
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-pfuma-green/5 rounded-full" aria-hidden="true" />
           </div>
 
           {/* Paddock usage */}
@@ -478,7 +572,7 @@ const HardwareSimulation = ({ animals = [] }) => {
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${p.pct > 80 ? 'bg-orange-400' : p.pct > 50 ? 'bg-zunde-green' : 'bg-blue-300'}`}
+                      className={`h-full rounded-full transition-all duration-500 ${p.pct > 80 ? 'bg-orange-400' : p.pct > 50 ? 'bg-pfuma-green' : 'bg-blue-300'}`}
                       style={{ width: `${p.pct}%` }}
                     />
                   </div>
