@@ -1,4 +1,5 @@
 import os
+import re
 import functools
 import datetime
 
@@ -27,6 +28,53 @@ ALLOWED_DOC_EXT = {'.pdf', '.jpg', '.jpeg', '.png'}
 
 # Roles that are not self-service — provisioned by an existing Police officer.
 ADMIN_PROVISIONED_ROLES = {'Police'}
+
+# ── ZIMBABWE-SPECIFIC FORMAT VALIDATION ─────────────────────────────
+# Mobile prefixes per POTRAZ's national numbering plan: Econet 077/078,
+# NetOne 071, Telecel 073. Accepts local (077...) or international
+# (+263 77... / 26377...) form and normalises to the local 0-prefixed form.
+ZW_MOBILE_PREFIXES = ('071', '073', '077', '078')
+
+
+def normalize_zw_phone(raw):
+    """Returns the normalized '0XXXXXXXXX' form of a Zimbabwean mobile
+    number, or None if it isn't a recognized Zimbabwean mobile format.
+    Landlines (province area codes, not 07x-mobile) are out of scope —
+    PFUMA accounts are expected to be reachable by SMS/call for
+    verification, same as the rest of the signup flow."""
+    digits = re.sub(r'\D', '', raw or '')
+    if digits.startswith('263'):
+        digits = '0' + digits[3:]
+    elif digits.startswith('0'):
+        pass
+    elif len(digits) == 9:
+        digits = '0' + digits
+    if len(digits) != 10 or not digits.startswith(ZW_MOBILE_PREFIXES):
+        return None
+    return digits
+
+
+# Zimbabwe national ID format: NN-NNNNNNN L NN (district code - serial -
+# check letter - citizenship code), e.g. "63-1234567A00". Serial length
+# varies 4-7 digits across older/newer IDs. This checks STRUCTURE only —
+# the check-letter's underlying computation isn't publicly documented
+# anywhere we could verify, so we deliberately don't pretend to validate
+# it mathematically; format-checking still catches typos and made-up
+# numbers, and Police/Vet reviewers cross-check the uploaded ID photo
+# against the typed number during verification.
+ZW_ID_RE = re.compile(r'^(\d{2})[\s-]?(\d{4,7})[\s-]?([A-Za-z])[\s-]?(\d{2})$')
+
+
+def normalize_zw_national_id(raw):
+    """Returns the canonical 'NN-NNNNNNNL NN' form, or None if the input
+    doesn't match the Zimbabwe national ID structure."""
+    if not raw:
+        return None
+    m = ZW_ID_RE.match(raw.strip())
+    if not m:
+        return None
+    district, serial, letter, citizenship = m.groups()
+    return f"{district}-{serial}{letter.upper()}{citizenship}"
 
 
 def get_db():
@@ -163,10 +211,23 @@ def register():
         return jsonify({"error": "Police accounts are provisioned by an existing verified officer, not self-service. Contact ZRP/DVS liaison."}), 403
 
     full_name = d.get('full_name', '').strip()
-    phone = d.get('phone', '').strip()
+    phone_raw = d.get('phone', '').strip()
+    national_id_raw = d.get('national_id_number', '').strip()
     password = d.get('password', '')
-    if not full_name or not phone or len(password) < 8:
+    if not full_name or not phone_raw or len(password) < 8:
         return jsonify({"error": "full_name, phone, and a password of at least 8 characters are required"}), 400
+
+    phone = normalize_zw_phone(phone_raw)
+    if not phone:
+        return jsonify({"error": "Enter a valid Zimbabwean mobile number (Econet 077/078, NetOne 071, or Telecel 073), e.g. 077 123 4567 or +263 77 123 4567."}), 400
+
+    national_id = None
+    if national_id_raw:
+        national_id = normalize_zw_national_id(national_id_raw)
+        if not national_id:
+            return jsonify({"error": "National ID number doesn't match the Zimbabwe format, e.g. 63-1234567A00 (district-serial-checkletter-citizenship code)."}), 400
+    elif role not in ADMIN_PROVISIONED_ROLES:
+        return jsonify({"error": "National ID number is required for signup verification."}), 400
 
     db = get_db()
     c = db.cursor()
@@ -177,12 +238,12 @@ def register():
 
     password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     c.execute("""
-        INSERT INTO users (full_name, phone, email, role, org_name, province, district, address,
+        INSERT INTO users (full_name, phone, national_id_number, email, role, org_name, province, district, address,
             farm_size_ha, species_farmed, license_number, speciality, business_reg, supply_categories,
             trading_areas, password_hash, verification_status)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')
     """, (
-        full_name, phone, d.get('email', ''), role,
+        full_name, phone, national_id, d.get('email', ''), role,
         d.get('org_name', ''), d.get('province', ''), d.get('district', ''), d.get('address', ''),
         d.get('farm_size_ha') or None, d.get('species_farmed', ''),
         d.get('license_number', ''), d.get('speciality', ''),
@@ -215,7 +276,7 @@ def register():
 @app.route('/auth/login', methods=['POST'])
 def login():
     d = request.json or {}
-    phone = d.get('phone', '').strip()
+    phone = normalize_zw_phone(d.get('phone', '')) or d.get('phone', '').strip()
     password = d.get('password', '')
     db = get_db()
     c = db.cursor()
@@ -351,16 +412,36 @@ def get_users():
 def create_user():
     """Administrative user provisioning — used by Police to create another
     verified officer account (Police signups are not self-service)."""
-    d = request.json
+    d = request.json or {}
+    full_name = (d.get('full_name') or '').strip()
+    if not full_name:
+        return jsonify({"error": "full_name is required"}), 400
+
+    phone = normalize_zw_phone(d.get('phone', ''))
+    if not phone:
+        return jsonify({"error": "Enter a valid Zimbabwean mobile number (Econet 077/078, NetOne 071, or Telecel 073), e.g. 077 123 4567."}), 400
+
+    national_id = normalize_zw_national_id(d.get('national_id_number', ''))
+    if not national_id:
+        return jsonify({"error": "National ID number doesn't match the Zimbabwe format, e.g. 63-1234567A00."}), 400
+
+    if not (d.get('badge_number') or '').strip():
+        return jsonify({"error": "badge_number is required for a Police account"}), 400
+
     db = get_db()
     c = db.cursor()
+    c.execute("SELECT id FROM users WHERE phone = %s", (phone,))
+    if c.fetchone():
+        db.close()
+        return jsonify({"error": "An account with this phone number already exists"}), 409
+
     password_hash = bcrypt.hashpw((d.get('password') or os.urandom(8).hex()).encode(), bcrypt.gensalt()).decode()
     c.execute("""
-        INSERT INTO users (full_name, phone, email, role, org_name, province, district, address,
+        INSERT INTO users (full_name, phone, national_id_number, email, role, org_name, province, district, address,
             badge_number, station, jurisdiction_province, password_hash, verification_status, verified_by)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'verified',%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'verified',%s)
     """, (
-        d.get('full_name', ''), d.get('phone', ''), d.get('email', ''), d.get('role', 'Police'),
+        full_name, phone, national_id, d.get('email', ''), d.get('role', 'Police'),
         d.get('org_name', ''), d.get('province', ''), d.get('district', ''), d.get('address', ''),
         d.get('badge_number', ''), d.get('station', ''), d.get('jurisdiction_province', ''),
         password_hash, g.current_user['id'],
@@ -368,7 +449,7 @@ def create_user():
     db.commit()
     user_id = c.lastrowid
     db.close()
-    return jsonify({"id": user_id, "message": "User provisioned ✅"})
+    return jsonify({"id": user_id, "message": "Officer account provisioned and verified."})
 
 
 @app.route('/users/<int:user_id>', methods=['GET'])
@@ -544,35 +625,81 @@ def update_iot_device(device_id):
 
 # Telemetry intake for real base-station hardware (see base_station.ino).
 # Authenticated by device serial rather than a user JWT, since firmware can't
-# hold a farmer's login session. Currently just validates + acknowledges —
-# the in-app IoT Monitor dashboard still visualizes simulated data; wiring
-# this into a live reading history is tracked as future work.
-@app.route('/api/iot/telemetry', methods=['POST'])
-def ingest_telemetry():
+# hold a farmer's login session. The base station's own serial (X-Station-ID
+# header) must be paired, AND the collar's serial (JSON "id" field) must
+# separately be paired — each device is claimed independently in the app.
+def _store_iot_reading():
     d = request.json or {}
     station_id = request.headers.get('X-Station-ID') or d.get('station_id')
+    collar_id = d.get('id')
+    if not collar_id:
+        return jsonify({"error": "Missing collar id"}), 400
+
     db = get_db()
     c = db.cursor()
     c.execute("SELECT id FROM iot_devices WHERE device_serial=%s", (station_id,))
-    device = c.fetchone()
+    station = c.fetchone()
+    if not station:
+        db.close()
+        return jsonify({"error": "Unrecognized base station — pair this device serial in the app first"}), 404
+
+    c.execute("SELECT id FROM iot_devices WHERE device_serial=%s", (collar_id,))
+    collar = c.fetchone()
+    if not collar:
+        db.close()
+        return jsonify({"error": "Unrecognized collar — pair this device serial in the app first"}), 404
+
+    c.execute("""
+        INSERT INTO iot_readings
+            (device_id, temp_c, heart_rate, latitude, longitude, gps_accuracy,
+             activity, move_mag, in_zone, battery_pct, fever_alert, theft_alert,
+             packet_no, rssi)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (
+        collar['id'], d.get('temp'), d.get('hr'), d.get('lat'), d.get('lon'), d.get('gpsAcc'),
+        d.get('activity'), d.get('move'), bool(d.get('inZone')), d.get('batt'),
+        bool(d.get('fever')), bool(d.get('theft')), d.get('pkt'), d.get('rssi'),
+    ))
+    db.commit()
     db.close()
-    if not device:
-        return jsonify({"error": "Unrecognized station — pair this device serial in the app first"}), 404
     return jsonify({"received": True})
+
+
+@app.route('/api/iot/telemetry', methods=['POST'])
+def ingest_telemetry():
+    return _store_iot_reading()
 
 
 @app.route('/api/iot/alert', methods=['POST'])
 def ingest_alert():
-    d = request.json or {}
-    station_id = request.headers.get('X-Station-ID') or d.get('station_id')
+    return _store_iot_reading()
+
+
+# Real reading history for the app's IoT Monitor tab. Falls back to the
+# built-in demo simulator (HardwareSimulation.jsx) on the frontend when an
+# animal has no paired device or no recent readings.
+@app.route('/animals/<int:animal_id>/iot-readings', methods=['GET'])
+@require_auth
+def get_iot_readings(animal_id):
     db = get_db()
     c = db.cursor()
-    c.execute("SELECT id FROM iot_devices WHERE device_serial=%s", (station_id,))
-    device = c.fetchone()
+    c.execute("SELECT owner_id FROM animals WHERE id=%s", (animal_id,))
+    animal = c.fetchone()
+    if not animal:
+        db.close(); return jsonify({"error": "Animal not found"}), 404
+    if g.current_user['role'] not in ('Veterinarian', 'Police') and animal['owner_id'] != g.current_user['id']:
+        db.close(); return jsonify({"error": "Not authorized to view this animal's readings"}), 403
+
+    limit = min(int(request.args.get('limit', 20)), 100)
+    c.execute("""
+        SELECT r.* FROM iot_readings r
+        JOIN iot_devices d ON r.device_id = d.id
+        WHERE d.animal_id = %s
+        ORDER BY r.received_at DESC LIMIT %s
+    """, (animal_id, limit))
+    rows = c.fetchall()
     db.close()
-    if not device:
-        return jsonify({"error": "Unrecognized station — pair this device serial in the app first"}), 404
-    return jsonify({"received": True})
+    return jsonify(rows)
 
 
 # ── HEALTH EVENTS ─────────────────────────────────────────────

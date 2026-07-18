@@ -2,10 +2,32 @@ import React, { useState } from 'react';
 import {
   Sprout, ShoppingBag, Truck, ArrowRight, ArrowLeft,
   Phone, Mail, MapPin, Building2, CheckCircle, Stethoscope, Shield,
-  Lock, Upload, AlertTriangle,
+  Lock, Upload, AlertTriangle, CreditCard,
 } from 'lucide-react';
 
 const API = 'http://localhost:5000';
+
+// ── Zimbabwe-specific format validation (mirrors backend/app.py so the user
+// sees the same feedback before submitting, not just after a 400 comes back) ──
+// Mobile prefixes per POTRAZ's national numbering plan: Econet 077/078,
+// NetOne 071, Telecel 073.
+const ZW_MOBILE_PREFIXES = ['071', '073', '077', '078'];
+function isValidZwPhone(raw) {
+  const digits = (raw || '').replace(/\D/g, '');
+  let n = digits;
+  if (n.startsWith('263')) n = '0' + n.slice(3);
+  else if (!n.startsWith('0') && n.length === 9) n = '0' + n;
+  return n.length === 10 && ZW_MOBILE_PREFIXES.some(p => n.startsWith(p));
+}
+// Zimbabwe national ID: NN-NNNNNNN L NN (district-serial-checkletter-citizenship).
+// This checks structure only — the check letter's computation isn't publicly
+// documented anywhere verifiable, so we don't pretend to validate it
+// mathematically. Format-checking still catches typos/made-up numbers; a
+// Police or Vet reviewer cross-checks the uploaded ID photo during verification.
+const ZW_ID_RE = /^\d{2}[\s-]?\d{4,7}[\s-]?[A-Za-z][\s-]?\d{2}$/;
+function isValidZwNationalId(raw) {
+  return ZW_ID_RE.test((raw || '').trim());
+}
 
 // ── data ───────────────────────────────────────────────────────────────────
 const ROLES = [
@@ -96,7 +118,7 @@ const AuthPortal = ({ onLogin }) => {
     // step 0
     role: 'Farmer',
     // step 1 — personal
-    fullName: '', phone: '', email: '', password: '', confirmPassword: '',
+    fullName: '', phone: '', nationalId: '', email: '', password: '', confirmPassword: '',
     // step 2 — organisation
     orgName: '', province: 'Mashonaland West', district: '', physicalAddress: '',
     // step 3 — role-specific
@@ -174,6 +196,7 @@ const AuthPortal = ({ onLogin }) => {
       const fd = new FormData();
       fd.append('full_name', form.fullName);
       fd.append('phone', form.phone);
+      fd.append('national_id_number', form.nationalId);
       fd.append('email', form.email);
       fd.append('password', form.password);
       fd.append('role', form.role);
@@ -204,7 +227,7 @@ const AuthPortal = ({ onLogin }) => {
 
   // ── step validation ──
   const canAdvance = () => {
-    if (step === 1) return form.fullName.trim() && form.phone.trim() && form.password.length >= 8 && form.password === form.confirmPassword;
+    if (step === 1) return form.fullName.trim() && isValidZwPhone(form.phone) && isValidZwNationalId(form.nationalId) && form.password.length >= 8 && form.password === form.confirmPassword;
     if (step === 2) return form.orgName.trim() && form.province;
     return true;
   };
@@ -253,6 +276,19 @@ const AuthPortal = ({ onLogin }) => {
           <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className={inputCls + ' pl-10'} type="tel" placeholder="+263 77 123 4567" value={form.phone} onChange={e => set('phone', e.target.value)} />
         </div>
+        {form.phone.trim() && !isValidZwPhone(form.phone) && (
+          <p className="text-[10px] text-red-500 font-bold mt-1">Enter a valid Zimbabwean mobile number (Econet 077/078, NetOne 071, or Telecel 073).</p>
+        )}
+      </Field>
+      <Field label="National ID Number" required>
+        <div className="relative">
+          <CreditCard size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input className={inputCls + ' pl-10'} type="text" placeholder="e.g. 63-1234567A00" value={form.nationalId} onChange={e => set('nationalId', e.target.value)} />
+        </div>
+        {form.nationalId.trim() && !isValidZwNationalId(form.nationalId) && (
+          <p className="text-[10px] text-red-500 font-bold mt-1">Doesn't match the Zimbabwe ID format (district-serial-checkletter-citizenship code), e.g. 63-1234567A00.</p>
+        )}
+        <p className="text-[10px] text-gray-400 font-medium mt-1">Used alongside your uploaded ID document so a reviewer can confirm they match.</p>
       </Field>
       <Field label="Email Address">
         <div className="relative">
@@ -484,6 +520,7 @@ const AuthPortal = ({ onLogin }) => {
             {[
               { label: 'Full Name',     value: form.fullName   },
               { label: 'Phone',         value: form.phone      },
+              { label: 'National ID',   value: form.nationalId },
               { label: 'Email',         value: form.email || '—' },
               { label: 'Organisation',  value: form.orgName    },
               { label: 'Province',      value: form.province   },
