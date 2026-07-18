@@ -197,6 +197,65 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
 
   const selectedAnimal = animals.find(a => a.id === selectedAnimalId) ?? animals[0] ?? null;
 
+  // ── Real device readings — takes over from the simulator whenever the
+  // selected animal has a paired collar that has reported in the last 2
+  // report intervals (~20s). Otherwise this stays empty and the existing
+  // Math.random() simulator below drives the display, clearly labelled as such.
+  const [liveReadings, setLiveReadings] = useState([]);
+  const LIVE_FRESHNESS_MS = 20000;
+
+  const readingToPoint = useCallback((r, prev) => {
+    const temp = parseFloat(r.temp_c);
+    const hr = r.heart_rate;
+    let vitality = 100;
+    if (r.fever_alert) vitality -= 25;
+    if (r.theft_alert) vitality -= 30;
+    if (!r.in_zone) vitality -= 15;
+    vitality = Math.max(0, Math.min(100, vitality));
+    return {
+      time: new Date(r.received_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      temperature: temp, heartRate: hr, activity: r.activity || 'Unknown',
+      lat: parseFloat(r.latitude).toFixed(4), lon: parseFloat(r.longitude).toFixed(4),
+      status: vitality > 85 ? 'Optimal' : vitality > 60 ? 'Caution' : 'Critical',
+      vitalityScore: vitality, battery: r.battery_pct, isBreach: !r.in_zone,
+      tempTrend: prev ? (temp > parseFloat(prev.temp_c) + 0.2 ? 'up' : temp < parseFloat(prev.temp_c) - 0.2 ? 'down' : 'flat') : 'flat',
+      hrTrend:   prev ? (hr   > prev.heart_rate + 3 ? 'up' : hr < prev.heart_rate - 3 ? 'down' : 'flat') : 'flat',
+      rssi: r.rssi, isLive: true,
+    };
+  }, []);
+
+  const fetchLiveReadings = useCallback(async () => {
+    if (!selectedAnimalId || !currentUser?.token) { setLiveReadings([]); return; }
+    try {
+      const res = await fetch(`${API}/animals/${selectedAnimalId}/iot-readings?limit=${MAX_HISTORY}`, {
+        headers: { Authorization: `Bearer ${currentUser.token}` },
+      });
+      if (!res.ok) { setLiveReadings([]); return; }
+      const rows = await res.json();
+      const fresh = rows.length > 0 && (Date.now() - new Date(rows[0].received_at).getTime()) < LIVE_FRESHNESS_MS;
+      setLiveReadings(fresh ? rows : []);
+    } catch { setLiveReadings([]); }
+  }, [selectedAnimalId, currentUser?.token]);
+
+  useEffect(() => {
+    fetchLiveReadings();
+    const id = setInterval(fetchLiveReadings, 8000);
+    return () => clearInterval(id);
+  }, [fetchLiveReadings]);
+
+  const isLiveDevice = liveReadings.length > 0;
+
+  useEffect(() => {
+    if (!isLiveDevice) return;
+    const chrono = [...liveReadings].reverse();
+    const points = chrono.map((r, i) => readingToPoint(r, i > 0 ? chrono[i - 1] : null));
+    setHistory(points.slice(-MAX_HISTORY));
+    const latest = points[points.length - 1];
+    setCurrentData(latest);
+    const dLat = parseFloat(latest.lat) - SAFE_ZONE.lat, dLon = parseFloat(latest.lon) - SAFE_ZONE.lon;
+    setTrackerOffset({ x: (dLat / 0.015) * 55, y: (dLon / 0.015) * 55 });
+  }, [liveReadings, isLiveDevice, readingToPoint]);
+
   const generateTick = useCallback(() => {
     const rawTemp = 37.8 + Math.random() * 2.5;
     const rawHR   = 65  + Math.random() * 40;
@@ -256,7 +315,7 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
   }, [selectedAnimal]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning || isLiveDevice) return;  // real device data takes priority over the simulator
     const id = setInterval(() => {
       const { newData, newAlerts, offsetX, offsetY } = generateTick();
       setCurrentData(newData);
@@ -265,7 +324,7 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
       if (newAlerts.length > 0) setAlerts(prev => [...newAlerts, ...prev].slice(0, 8));
     }, 5000);
     return () => clearInterval(id);
-  }, [isRunning, generateTick]);
+  }, [isRunning, isLiveDevice, generateTick]);
 
   const tempAlert = currentData.temperature > NORMAL_RANGES.temperature.max || currentData.temperature < NORMAL_RANGES.temperature.min;
   const hrAlert   = currentData.heartRate   > NORMAL_RANGES.heartRate.max   || currentData.heartRate   < NORMAL_RANGES.heartRate.min;
@@ -290,12 +349,17 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
         <div className="relative z-10 flex flex-col items-start md:items-end gap-3 shrink-0">
           {/* System status */}
           <div className="flex items-center gap-3 flex-wrap">
-            <div className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${isRunning ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-gray-700 text-gray-400 border border-gray-600'}`}>
-              {isRunning ? <Wifi size={12} /> : <WifiOff size={12} />}
-              {isRunning ? 'Tag Online · Live' : 'Paused'}
+            <div className={`flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
+              isLiveDevice ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+              : isRunning ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+              : 'bg-gray-700 text-gray-400 border border-gray-600'
+            }`}>
+              {isLiveDevice ? <Wifi size={12} /> : isRunning ? <Wifi size={12} /> : <WifiOff size={12} />}
+              {isLiveDevice ? 'Live · Physical Collar' : isRunning ? 'Demo Simulation' : 'Paused'}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-black px-3 py-1.5 rounded-full bg-white/5 text-gray-400 border border-white/10 uppercase tracking-widest">
-              <Signal size={12} className="text-blue-400" /> Signal: Strong
+              <Signal size={12} className="text-blue-400" />
+              {isLiveDevice ? `RSSI: ${currentData.rssi ?? '—'} dBm` : 'Signal: Simulated'}
             </div>
           </div>
           {/* Battery */}

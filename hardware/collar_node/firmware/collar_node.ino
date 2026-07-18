@@ -7,13 +7,16 @@
  * Radio   : SX1278 LoRa 433 MHz
  * Power   : LiPo 3.7V + Solar via TP4056
  *
- * Sends JSON telemetry every REPORT_INTERVAL_MS via LoRa to BS-01 Base Station.
+ * Sends a compact 28-byte binary CollarPacket every REPORT_INTERVAL_MS via
+ * LoRa to BS-01 Base Station (see the CollarPacket struct + LORA_SF comment
+ * below for why this isn't JSON-over-LoRa — the base station re-expands it
+ * into JSON before forwarding to the Flask API over WiFi, where airtime is
+ * not a constraint).
  * Switches to ALERT_INTERVAL_MS on theft / fever detection.
- * Deep-sleeps between readings to preserve battery.
  *
  * Dependencies (install via Arduino Library Manager):
  *   OneWire, DallasTemperature, MPU6050 (ElectronicCats),
- *   SparkFun MAX3010x, TinyGPSPlus, LoRa (Sandeep Mistry), ArduinoJson
+ *   SparkFun MAX3010x, TinyGPSPlus, LoRa (Sandeep Mistry)
  */
 
 #include <Arduino.h>
@@ -29,9 +32,8 @@
 #include <TinyGPSPlus.h>
 #include <HardwareSerial.h>
 
-// ── Radio + data ─────────────────────────────────────────────────────────────
+// ── Radio ─────────────────────────────────────────────────────────────────────
 #include <LoRa.h>
-#include <ArduinoJson.h>
 
 // ═══════════════════════════════════════════════════════════════════════
 //  PIN MAP  (matches HARDWARE_DESIGN.md CN-01)
@@ -58,17 +60,30 @@
 // ═══════════════════════════════════════════════════════════════════════
 #define LORA_FREQ          433E6
 #define LORA_BANDWIDTH     125E3
-#define LORA_SF            9         // Spreading factor (range vs speed)
+// SF7 (not SF9) is a deliberate capacity decision, not a default: at SF9 with
+// this telemetry payload, airtime is ~1.15s/packet and a base station can only
+// reliably hear ~4-5 collars before airtime collisions dominate. SF7 cuts
+// airtime ~4x on its own, and combined with the compact binary packet below
+// (~28 bytes instead of a ~230-byte JSON string) gets airtime down to ~70ms,
+// supporting 30+ collars per base station at the 10s report interval. The
+// trade-off is range: SF7 typically covers ~1-2km on farm terrain rather than
+// SF9's ~5km open-field figure — acceptable for a single farm's paddocks; if
+// your grazing area is unusually large/hilly, raise SF back up (see
+// hardware/HARDWARE_DESIGN.md "Network Capacity" section for the full numbers
+// and how to re-run this trade-off for your farm).
+#define LORA_SF            7         // Spreading factor (range vs speed vs node capacity)
 #define LORA_CR            5         // Coding rate 4/5
 #define LORA_TX_POWER      17        // dBm (max 20)
 
-// Collar identity — REPLACE before flashing each collar. This is the device
-// serial you'll type into the app's IoT tab ("Paired Devices" panel) to claim
-// this collar under your PFUMA account and attach it to the matching animal.
-// Give every collar a unique ID, e.g. "CN-<number>-<YourFarmCode>".
-#define COLLAR_ID          "CN-001-YOURFARM"
-#define ANIMAL_NAME        "YOUR_ANIMAL_NAME"
-#define ANIMAL_TAG         "YOUR_ANIMAL_TAG_ID"
+// Collar identity — REPLACE before flashing each collar. Max 8 characters
+// (fits the compact over-the-air packet) — suggested format "CNnnnFFF"
+// (CN + 3-digit collar number + up to 3-char farm code), e.g. "CN014ZVI" for
+// collar #14 on a Zvimba farm. This exact string is also what you'll type
+// into the app's IoT tab ("Paired Devices" panel) to claim this collar under
+// your PFUMA account and attach it to the matching animal — the animal name
+// and tag live in the app/database, not on the collar, so they aren't sent
+// over the air.
+#define COLLAR_ID          "CN014ZVI"
 
 // Safe zone (home paddock GPS coordinates)
 #define SAFE_LAT          -17.3601f
@@ -101,11 +116,9 @@ MAX30105          maxSensor;
 TinyGPSPlus       gps;
 HardwareSerial    gpsSerial(2);   // UART2
 
-// Telemetry state
+// Telemetry state (in-memory, full precision — trimmed down to the compact
+// binary CollarPacket below only at the moment of transmission)
 struct Telemetry {
-  String collarId    = COLLAR_ID;
-  String animalName  = ANIMAL_NAME;
-  String animalTag   = ANIMAL_TAG;
   float  bodyTempC   = 0.0f;
   int    heartRate   = 0;
   float  latitude    = 0.0f;
@@ -123,6 +136,27 @@ struct Telemetry {
   bool   theftAlert  = false;
   String timestamp   = "";
 };
+
+// ── Compact over-the-air packet ─────────────────────────────────────────────
+// 28 bytes total, deliberately binary (not JSON) — see the LORA_SF comment
+// above for why. Animal name/tag are NOT sent: the base station/backend look
+// those up from collarId via the app's device-pairing table, so they never
+// need to travel over the airtime-constrained LoRa link.
+enum Activity : uint8_t { ACT_RESTING = 0, ACT_GRAZING = 1, ACT_WALKING = 2, ACT_RUNNING = 3, ACT_UNKNOWN = 255 };
+
+struct __attribute__((packed)) CollarPacket {
+  char     collarId[8];    // null-padded, e.g. "CN014ZVI"
+  int16_t  tempC_x10;      // body temp * 10 (e.g. 385 = 38.5C)
+  uint8_t  heartRate;      // bpm, 0-255
+  int32_t  lat_x1e6;       // latitude  * 1,000,000 (fixed point, ~0.11m precision)
+  int32_t  lon_x1e6;       // longitude * 1,000,000
+  uint16_t gpsAcc_x10;     // HDOP * 10
+  uint16_t moveMag;        // movement magnitude (see readIMU)
+  uint8_t  activity;       // Activity enum
+  uint8_t  battPct;        // 0-100
+  uint8_t  flags;          // bit0=inSafeZone, bit1=feverAlert, bit2=theftAlert
+  uint16_t pkt;            // packet counter (wraps at 65535)
+};                         // sizeof == 28 bytes
 
 Telemetry tel;
 
@@ -144,8 +178,8 @@ int           beatAvg      = 0;
 void setup() {
   Serial.begin(115200);
   Serial.println(F("\n=== PFUMA Collar Node CN-01 ==="));
-  Serial.printf("Collar: %s  Animal: %s  Tag: %s\n",
-                COLLAR_ID, ANIMAL_NAME, ANIMAL_TAG);
+  Serial.printf("Collar ID: %s  (pair this exact string in the app's IoT tab)\n", COLLAR_ID);
+  static_assert(sizeof(CollarPacket) == 28, "CollarPacket drifted from the documented 28-byte layout");
 
   pinMode(PIN_LED, OUTPUT);
   blinkLED(3, 200);
@@ -349,38 +383,38 @@ void buildAlerts() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-//  LORA TRANSMIT
+//  LORA TRANSMIT — compact binary CollarPacket, not JSON (see LORA_SF comment)
 // ═══════════════════════════════════════════════════════════════════════
+uint8_t activityToEnum(const String& a) {
+  if (a == "Resting") return ACT_RESTING;
+  if (a == "Grazing") return ACT_GRAZING;
+  if (a == "Walking") return ACT_WALKING;
+  if (a == "Running") return ACT_RUNNING;
+  return ACT_UNKNOWN;
+}
+
 void sendLoRa() {
-  StaticJsonDocument<512> doc;
+  CollarPacket pkt = {};
+  strncpy(pkt.collarId, COLLAR_ID, sizeof(pkt.collarId));  // truncates/pads to 8 bytes
 
-  doc["id"]       = tel.collarId;
-  doc["animal"]   = tel.animalName;
-  doc["tag"]      = tel.animalTag;
-  doc["temp"]     = round(tel.bodyTempC * 10) / 10.0;
-  doc["hr"]       = tel.heartRate;
-  doc["lat"]      = tel.latitude;
-  doc["lon"]      = tel.longitude;
-  doc["gpsAcc"]   = tel.gpsAccuracy;
-  doc["activity"] = tel.activity;
-  doc["move"]     = tel.moveMag;
-  doc["inZone"]   = tel.inSafeZone;
-  doc["batt"]     = tel.battPct;
-  doc["fever"]    = tel.feverAlert;
-  doc["theft"]    = tel.theftAlert;
-  doc["time"]     = tel.timestamp;
-  doc["pkt"]      = ++packetCount;
-
-  String payload;
-  serializeJson(doc, payload);
+  pkt.tempC_x10  = (int16_t)round(tel.bodyTempC * 10);
+  pkt.heartRate  = (uint8_t)constrain(tel.heartRate, 0, 255);
+  pkt.lat_x1e6   = (int32_t)round(tel.latitude  * 1000000.0);
+  pkt.lon_x1e6   = (int32_t)round(tel.longitude * 1000000.0);
+  pkt.gpsAcc_x10 = (uint16_t)constrain((int)round(tel.gpsAccuracy * 10), 0, 65535);
+  pkt.moveMag    = (uint16_t)constrain(tel.moveMag, 0, 65535);
+  pkt.activity   = activityToEnum(tel.activity);
+  pkt.battPct    = (uint8_t)constrain(tel.battPct, 0, 100);
+  pkt.flags      = (tel.inSafeZone ? 0x01 : 0) | (tel.feverAlert ? 0x02 : 0) | (tel.theftAlert ? 0x04 : 0);
+  pkt.pkt        = (uint16_t)(++packetCount & 0xFFFF);
 
   LoRa.beginPacket();
-  LoRa.print(payload);
+  LoRa.write((uint8_t*)&pkt, sizeof(pkt));
   int ok = LoRa.endPacket();
 
   tel.signalRSSI = LoRa.packetRssi();
-  Serial.printf("[LoRa] TX pkt#%d (%d bytes) %s\n",
-                packetCount, payload.length(), ok ? "OK" : "FAIL");
+  Serial.printf("[LoRa] TX pkt#%d (%u bytes, SF%d) %s\n",
+                packetCount, (unsigned)sizeof(pkt), LORA_SF, ok ? "OK" : "FAIL");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -388,8 +422,7 @@ void sendLoRa() {
 // ═══════════════════════════════════════════════════════════════════════
 void printDebug() {
   Serial.println(F("─────────────────────────────────"));
-  Serial.printf("Collar   : %s  (%s  #%s)\n",
-                tel.collarId.c_str(), tel.animalName.c_str(), tel.animalTag.c_str());
+  Serial.printf("Collar   : %s\n", COLLAR_ID);
   Serial.printf("Temp     : %.1f°C  %s\n",
                 tel.bodyTempC, tel.feverAlert ? "*** FEVER ***" : "OK");
   Serial.printf("Heart    : %d bpm  %s\n",

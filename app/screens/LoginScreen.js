@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Sprout, Stethoscope, Pill, Store, Shield, User, Phone, Mail,
   Building2, MapPin, Check, CheckCircle, ArrowRight, ArrowLeft,
-  Lock, AlertTriangle,
+  Lock, AlertTriangle, CreditCard,
 } from 'lucide-react-native';
 import { COLORS, API } from '../config';
 
@@ -28,6 +28,24 @@ const PROVINCES = [
 
 const STEPS = ['Role','Personal','Organisation','Details','Confirm'];
 const inp = { backgroundColor: '#f4f6f5', borderRadius: 14, padding: 14, fontSize: 14, color: '#1a1a1a', marginBottom: 12 };
+
+// ── Zimbabwe-specific format validation (mirrors backend/app.py and the web
+// app's src/components/IntelAI/AuthPortal.jsx) ──
+const ZW_MOBILE_PREFIXES = ['071', '073', '077', '078'];
+function isValidZwPhone(raw) {
+  const digits = (raw || '').replace(/\D/g, '');
+  let n = digits;
+  if (n.startsWith('263')) n = '0' + n.slice(3);
+  else if (!n.startsWith('0') && n.length === 9) n = '0' + n;
+  return n.length === 10 && ZW_MOBILE_PREFIXES.some(p => n.startsWith(p));
+}
+// Zimbabwe national ID: NN-NNNNNNN L NN. Structure only — the check letter's
+// computation isn't publicly documented anywhere verifiable, so this
+// deliberately doesn't pretend to validate it mathematically.
+const ZW_ID_RE = /^\d{2}[\s-]?\d{4,7}[\s-]?[A-Za-z][\s-]?\d{2}$/;
+function isValidZwNationalId(raw) {
+  return ZW_ID_RE.test((raw || '').trim());
+}
 
 const InputField = ({ icon: Icon, ...props }) => (
   <View style={styles.inputWrap}>
@@ -71,7 +89,7 @@ export default function LoginScreen({ onLogin }) {
   const [authError, setAuthError] = useState('');
   const [authBusy,  setAuthBusy]  = useState(false);
   const [form, setForm] = useState({
-    role: 'Farmer', fullName: '', phone: '', email: '', password: '', confirmPassword: '',
+    role: 'Farmer', fullName: '', phone: '', nationalId: '', email: '', password: '', confirmPassword: '',
     orgName: '', province: 'Mashonaland West', district: '',
     farmSize: '', species: [], licenseNumber: '', speciality: '',
     businessReg: '', supplyCategories: [], tradingAreas: '',
@@ -82,7 +100,7 @@ export default function LoginScreen({ onLogin }) {
   const toggleArr = (k, v) => setForm(p => ({ ...p, [k]: p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v] }));
   const role      = ROLES.find(r => r.name === form.role) || ROLES[0];
   const canNext   = () => {
-    if (step===1) return form.fullName.trim() && form.phone.trim() && form.password.length >= 8 && form.password === form.confirmPassword;
+    if (step===1) return form.fullName.trim() && isValidZwPhone(form.phone) && isValidZwNationalId(form.nationalId) && form.password.length >= 8 && form.password === form.confirmPassword;
     if (step===2) return form.orgName.trim();
     return true;
   };
@@ -111,6 +129,7 @@ export default function LoginScreen({ onLogin }) {
       const fd = new FormData();
       fd.append('full_name', form.fullName);
       fd.append('phone', form.phone);
+      fd.append('national_id_number', form.nationalId);
       fd.append('email', form.email);
       fd.append('password', form.password);
       fd.append('role', form.role);
@@ -178,6 +197,14 @@ export default function LoginScreen({ onLogin }) {
       <InputField icon={User}  placeholder="e.g. Tatenda Moyo"  value={form.fullName} onChangeText={v=>set('fullName',v)} />
       <Text style={styles.label}>Phone Number *</Text>
       <InputField icon={Phone} placeholder="+263 77 123 4567"   value={form.phone}    onChangeText={v=>set('phone',v)}    keyboardType="phone-pad" />
+      {!!form.phone.trim() && !isValidZwPhone(form.phone) && (
+        <Text style={{ color: COLORS.danger, fontSize: 11, fontWeight: '700', marginTop: -8, marginBottom: 10 }}>Enter a valid Zimbabwean mobile number (Econet 077/078, NetOne 071, or Telecel 073).</Text>
+      )}
+      <Text style={styles.label}>National ID Number *</Text>
+      <InputField icon={CreditCard} placeholder="e.g. 63-1234567A00" value={form.nationalId} onChangeText={v=>set('nationalId',v)} />
+      {!!form.nationalId.trim() && !isValidZwNationalId(form.nationalId) && (
+        <Text style={{ color: COLORS.danger, fontSize: 11, fontWeight: '700', marginTop: -8, marginBottom: 10 }}>Doesn't match the Zimbabwe ID format, e.g. 63-1234567A00.</Text>
+      )}
       <Text style={styles.label}>Email Address</Text>
       <InputField icon={Mail}  placeholder="you@example.com"    value={form.email}    onChangeText={v=>set('email',v)}    keyboardType="email-address" />
       <Text style={styles.label}>Password *</Text>
@@ -287,7 +314,7 @@ export default function LoginScreen({ onLogin }) {
           <Text style={styles.roleBadgeText}>{form.role}</Text>
         </View>
         {[
-          ['Full Name', form.fullName], ['Phone', form.phone], ['Email', form.email||'—'],
+          ['Full Name', form.fullName], ['Phone', form.phone], ['National ID', form.nationalId], ['Email', form.email||'—'],
           ['Organisation', form.orgName], ['Province', form.province],
           form.farmSize      ? ['Farm Size', `${form.farmSize} ha`] : null,
           form.species?.length ? ['Species', form.species.join(', ')] : null,

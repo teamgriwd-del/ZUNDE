@@ -3,8 +3,12 @@
 -- Covers: Web App (Arnold) + Mobile App (Addy) + Flask API
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS pfuma;
-USE pfuma;
+-- This is the PUBLIC DEMO copy's schema — deliberately a separate database
+-- (pfuma_demo) from the strict main copy's `pfuma` database, so demo-mode
+-- auto-verified/dummy signups never touch real data. See DEMO_MODE in
+-- backend/app.py.
+CREATE DATABASE IF NOT EXISTS pfuma_demo;
+USE pfuma_demo;
 
 -- ── USERS ────────────────────────────────────────────────────
 -- Shared between web + mobile. Populated from the AuthPortal.
@@ -12,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   full_name     VARCHAR(120) NOT NULL,
   phone         VARCHAR(20)  NOT NULL,
+  national_id_number VARCHAR(20),   -- Zimbabwe national ID, e.g. 63-1234567A00 (format-checked, see backend/app.py)
   email         VARCHAR(120),
   role          ENUM('Farmer','Veterinarian','Supplier','Retailer','Police') NOT NULL,
   org_name      VARCHAR(120),          -- farm/business/practice name
@@ -218,6 +223,32 @@ CREATE TABLE IF NOT EXISTS iot_devices (
   FOREIGN KEY (owner_id)  REFERENCES users(id)   ON DELETE CASCADE
 );
 
+-- ── IOT READINGS ───────────────────────────────────────────────
+-- Real telemetry from a paired physical collar, as decoded by the base
+-- station firmware and posted to /api/iot/telemetry or /api/iot/alert.
+-- Distinct from the app's built-in demo simulator (HardwareSimulation.jsx),
+-- which is used whenever a device has no real readings yet.
+CREATE TABLE IF NOT EXISTS iot_readings (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  device_id    INT NOT NULL,          -- FK → iot_devices.id (the collar)
+  temp_c       DECIMAL(4,1),
+  heart_rate   INT,
+  latitude     DECIMAL(9,6),
+  longitude    DECIMAL(9,6),
+  gps_accuracy DECIMAL(5,1),
+  activity     VARCHAR(20),
+  move_mag     INT,
+  in_zone      BOOLEAN,
+  battery_pct  INT,
+  fever_alert  BOOLEAN DEFAULT FALSE,
+  theft_alert  BOOLEAN DEFAULT FALSE,
+  packet_no    INT,
+  rssi         INT,                   -- LoRa signal strength in dBm, as seen by the base station
+  received_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (device_id) REFERENCES iot_devices(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_iot_readings_device_time ON iot_readings (device_id, received_at DESC);
+
 -- ── SEED DATA ─────────────────────────────────────────────────
 -- Demo password for every seeded account below: Pfuma2026!
 -- (bcrypt hash generated once — do not reuse this hash pattern for real accounts)
@@ -225,24 +256,24 @@ CREATE TABLE IF NOT EXISTS iot_devices (
 -- Demo user: Police (seed admin account — Police signups are not self-service; a real
 -- deployment would provision officer accounts out-of-band, e.g. via ZRP/DVS liaison).
 -- Inserted first since other seed users reference it as their verifier.
-INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, badge_number, station, jurisdiction_province, password_hash, verification_status)
-VALUES (5, 'Officer Farai Chikwanha', '+263 77 500 0005', 'fchikwanha@zrp.gov.zw', 'Police', 'ZRP Stock Theft Unit', 'Mashonaland West', 'ZRP-STU-0231', 'Chegutu Police Station', 'Mashonaland West', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified');
+INSERT IGNORE INTO users (id, full_name, phone, national_id_number, email, role, org_name, province, badge_number, station, jurisdiction_province, password_hash, verification_status)
+VALUES (5, 'Officer Farai Chikwanha', '0775000005', '63-1000005E00', 'fchikwanha@zrp.gov.zw', 'Police', 'ZRP Stock Theft Unit', 'Mashonaland West', 'ZRP-STU-0231', 'Chegutu Police Station', 'Mashonaland West', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified');
 
 -- Demo user: Farmer Arnold
-INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, district, farm_size_ha, species_farmed, password_hash, verification_status, verified_by)
-VALUES (1, 'Arnold Mapindu', '+263 77 100 0001', 'arnold@example.com', 'Farmer', 'Mapindu Family Farm', 'Mashonaland West', 'Zvimba', 50.0, 'Cattle,Goat', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
+INSERT IGNORE INTO users (id, full_name, phone, national_id_number, email, role, org_name, province, district, farm_size_ha, species_farmed, password_hash, verification_status, verified_by)
+VALUES (1, 'Arnold Mapindu', '0771000001', '63-1000001A05', 'arnold@example.com', 'Farmer', 'Mapindu Family Farm', 'Mashonaland West', 'Zvimba', 50.0, 'Cattle,Goat', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Vet
-INSERT IGNORE INTO users (id, full_name, phone, email, role, org_name, province, license_number, speciality, password_hash, verification_status, verified_by)
-VALUES (2, 'Dr T. Moyo', '+263 77 200 0002', 'tmoyo@dvs.gov.zw', 'Veterinarian', 'DVS Mashonaland West', 'Mashonaland West', 'DVS-ZIM-2024-0045', 'Tick-borne Diseases', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
+INSERT IGNORE INTO users (id, full_name, phone, national_id_number, email, role, org_name, province, license_number, speciality, password_hash, verification_status, verified_by)
+VALUES (2, 'Dr T. Moyo', '0772000002', '63-1000002B12', 'tmoyo@dvs.gov.zw', 'Veterinarian', 'DVS Mashonaland West', 'Mashonaland West', 'DVS-ZIM-2024-0045', 'Tick-borne Diseases', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Supplier
-INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, supply_categories, password_hash, verification_status, verified_by)
-VALUES (3, 'Chido Ncube', '+263 77 300 0003', 'Supplier', 'AgroChem Zimbabwe', 'Harare', 'BP-12345/2024', 'Vaccines,Antibiotics,Antiparasitcs', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
+INSERT IGNORE INTO users (id, full_name, phone, national_id_number, role, org_name, province, business_reg, supply_categories, password_hash, verification_status, verified_by)
+VALUES (3, 'Chido Ncube', '0773000003', '63-1000003C08', 'Supplier', 'AgroChem Zimbabwe', 'Harare', 'BP-12345/2024', 'Vaccines,Antibiotics,Antiparasitcs', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo user: Retailer
-INSERT IGNORE INTO users (id, full_name, phone, role, org_name, province, business_reg, trading_areas, password_hash, verification_status, verified_by)
-VALUES (4, 'ZimAgro Enterprise', '+263 77 400 0004', 'Retailer', 'ZimAgro Ltd', 'Harare', 'BP-67890/2023', 'Mashonaland West,Midlands,Harare', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
+INSERT IGNORE INTO users (id, full_name, phone, national_id_number, role, org_name, province, business_reg, trading_areas, password_hash, verification_status, verified_by)
+VALUES (4, 'ZimAgro Enterprise', '0774000004', '63-1000004D19', 'Retailer', 'ZimAgro Ltd', 'Harare', 'BP-67890/2023', 'Mashonaland West,Midlands,Harare', '$2b$12$ehzt67O363Q.ihnPFIXf5uNgjqwdMcLgcCoYe7RaGV7lCl1uVblHG', 'verified', 5);
 
 -- Demo animals (owned by Arnold)
 INSERT IGNORE INTO animals (id, owner_id, name, species, breed, birth_date, tag_id, brand_id, birth_weight, current_weight, for_sale)

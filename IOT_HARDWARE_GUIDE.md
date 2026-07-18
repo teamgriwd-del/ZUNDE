@@ -2,11 +2,18 @@
 
 This guide covers the **Physical Hardware Layer** of PFUMA: how to connect a real collar (CN-01) and base station (BS-01) to your farm and your PFUMA account, and how the Proteus/Arduino simulation setup works for development.
 
-**Where things stand today:** device pairing (claiming a collar/base station under your account) is fully real and wired to the backend. The live sensor readings shown in the app's IoT Monitor tab are still a realistic simulation for demo purposes — the physical hardware can already send data to the backend (see §4), but wiring that into the dashboard's live reading history is future work, tracked separately from this guide.
+**Where things stand today:** device pairing, real telemetry storage, and the app's IoT Monitor display are all wired end-to-end and verified working. When a paired collar has reported within the last ~20 seconds, the dashboard shows its real readings (temperature, heart rate, GPS, battery, RSSI) and is clearly labelled "Live · Physical Collar." When it hasn't (no hardware built yet, or a collar's gone quiet), the dashboard falls back to a clearly-labelled "Demo Simulation" so the app is still usable for demos without hardware in hand.
 
 ---
 
 ## 1. Connecting Your Physical Hardware — Farmer/Installer Setup
+
+### Real wiring diagrams and reference photos
+
+This section is the walkthrough; for the actual build reference, use:
+- [`PFUMA_CN01_Wiring_Diagram.pdf`](../PFUMA_CN01_Wiring_Diagram.pdf) / [`PFUMA_BS01_Wiring_Diagram.pdf`](../PFUMA_BS01_Wiring_Diagram.pdf) — real, pin-level, colour-coded wiring diagrams (regenerate with `python make_wiring_diagrams.py && python render_wiring_diagrams.py` if the design changes). These are module-interconnection diagrams for perfboard/breadboard building, not the simplified Proteus simulation circuit in §2 below.
+- [`hardware/actual_equipment/README.md`](hardware/actual_equipment/README.md) — reference photos and exact order/search terms for every real component in the BOM.
+- [`hardware/HARDWARE_DESIGN.md`](hardware/HARDWARE_DESIGN.md) — the full pin-by-pin netlist and BOM these diagrams are generated from (source of truth if anything conflicts).
 
 ### What you need
 Two board types, per the full design in [`hardware/HARDWARE_DESIGN.md`](hardware/HARDWARE_DESIGN.md):
@@ -14,9 +21,9 @@ Two board types, per the full design in [`hardware/HARDWARE_DESIGN.md`](hardware
 | Board | Purpose | Core parts |
 |---|---|---|
 | **CN-01 Collar Node** (one per animal) | Worn on the animal — measures temperature, heart rate, movement, GPS location, and radios it to the base station | ESP32-WROOM-32, SX1278 LoRa module, NEO-6M GPS, MPU-6050 (motion), MAX30102 (heart rate), DS18B20 (temperature), solar panel + LiPo battery + TP4056 charger |
-| **BS-01 Base Station** (one per farm) | Fixed near your house/router — receives LoRa data from all collars in range (up to ~5km open field) and forwards it to the PFUMA backend over WiFi | ESP32-WROOM-32, SX1278 LoRa module, SSD1306 OLED display |
+| **BS-01 Base Station** (one per farm) | Fixed near your house/router — receives LoRa data from collars in range and forwards it to the PFUMA backend over WiFi. At the firmware's current SF7 setting, that's typically **~1-2km on farm terrain** (traded down from a theoretical ~5km SF9 max range to comfortably support **30+ collars per base station** — see "Network Capacity" in `HARDWARE_DESIGN.md` for the real numbers behind that trade-off) | ESP32-WROOM-32, SX1278 LoRa module, SSD1306 OLED display |
 
-You can order the components from the BOM tables in `HARDWARE_DESIGN.md` and assemble/solder them yourself, or have a local electronics workshop build the boards from that design.
+You can order the components from the BOM tables in `HARDWARE_DESIGN.md` (or the shopping-list version in `hardware/actual_equipment/README.md`) and assemble/solder them yourself, or have a local electronics workshop build the boards from that design.
 
 ### Step 1 — Flash the firmware
 1. Install the [Arduino IDE](https://www.arduino.cc/en/software) and add ESP32 board support (Boards Manager → search "esp32").
@@ -32,8 +39,7 @@ Both files have a clearly marked `CONFIGURATION` section near the top with place
 - `STATION_ID` — a unique name for this base station, e.g. `BS-01-YOURFARM`. This is what you'll type into the app to claim it (Step 4).
 
 **Collar (`collar_node.ino`):**
-- `COLLAR_ID` — a unique name for this collar, e.g. `CN-001-YOURFARM`.
-- `ANIMAL_NAME` / `ANIMAL_TAG` — the animal it's attached to (for on-device reference; the real animal link happens in the app in Step 4).
+- `COLLAR_ID` — a unique name for this collar, **max 8 characters** (it travels over the airtime-constrained LoRa link in a fixed-size field — see the compact `CollarPacket` struct in the firmware). Suggested format `CNnnnFFF`, e.g. `CN014ZVI` for collar #14 on a Zvimba farm. The animal name/tag are *not* set on the collar — they live in the app, linked via pairing in Step 4.
 
 ### Step 3 — Power on
 1. Power on the **base station** first, near your router. Its WiFi status LED (yellow, `PIN_LED_WIFI`) should light up once it connects — check the OLED screen for a "WiFi Connected" message.
@@ -149,7 +155,7 @@ void loop() {
 
 The device doesn't just send raw data — it performs edge computing:
 - **Theft Signature:** looks for rapid movement *combined with* an increasing distance from the farm center, rather than either signal alone.
-- **Adaptive Sampling:** stays in "Quiet Mode" (10s interval) when the animal is calm, and switches to high-frequency tracking (2s interval) the moment an anomaly is detected — this is what lets a real collar last months on a small battery instead of draining it with constant high-rate transmission.
+- **Adaptive Sampling:** stays in "Quiet Mode" (10s interval, `REPORT_INTERVAL_MS`) when the animal is calm, and switches to high-frequency tracking (3s interval, `ALERT_INTERVAL_MS`) the moment fever or a theft signature is detected — this is what lets a real collar last months on a small battery instead of draining it with constant high-rate transmission. (The simplified Proteus sketch in §2 uses illustrative 10s/2s values for the same idea.)
 
 ## 4. Backend Endpoints Involved
 
@@ -158,8 +164,9 @@ The device doesn't just send raw data — it performs edge computing:
 | `POST /iot-devices/pair` | PFUMA app (farmer, authenticated) | Claim a device serial under your account |
 | `GET /iot-devices` | PFUMA app (farmer, authenticated) | List your paired devices |
 | `PATCH /iot-devices/<id>` | PFUMA app (farmer, authenticated) | Attach/change which animal a device is linked to |
-| `POST /api/iot/telemetry` | Base station firmware | Sensor readings — currently validated and acknowledged, not yet stored as history |
-| `POST /api/iot/alert` | Base station firmware | Theft/health alerts — same current status as telemetry |
+| `POST /api/iot/telemetry` | Base station firmware | Sensor readings — validated (both the base station's and the collar's serial must be paired) and **stored** in `iot_readings` |
+| `POST /api/iot/alert` | Base station firmware | Theft/fever alerts — same handling and storage as telemetry |
+| `GET /animals/<id>/iot-readings` | PFUMA app (farmer/vet/police, authenticated) | Recent real readings for one animal's paired collar — this is what the IoT Monitor tab polls to decide "live" vs "simulated" |
 
 ---
 *PFUMA IoT — Zimbabwe Agricultural Show*

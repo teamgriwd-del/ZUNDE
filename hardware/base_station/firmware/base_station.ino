@@ -7,8 +7,10 @@
  * Display : SSD1306 OLED 128×64
  * Network : WiFi → Flask API (backend/app.py)
  *
- * Receives LoRa JSON from collar nodes, forwards to PFUMA API via WiFi.
- * Displays live collar status on OLED.
+ * Receives the compact 28-byte binary CollarPacket from collar nodes over
+ * LoRa (see collar_node.ino — this struct must match exactly), re-expands it
+ * into JSON, and forwards to the PFUMA API via WiFi where airtime is not a
+ * constraint. Displays live collar status on OLED.
  * Drives 4 status LEDs: PWR / LoRa / WiFi / Alert.
  *
  * Dependencies:
@@ -60,7 +62,10 @@
 
 #define LORA_FREQ        433E6
 #define LORA_BANDWIDTH   125E3
-#define LORA_SF          9
+// Must match collar_node.ino exactly — see its LORA_SF comment for the
+// airtime/capacity trade-off this value encodes (~30 collars at SF7 with the
+// compact binary packet vs. ~4-5 at the old SF9+JSON combination).
+#define LORA_SF          7
 #define LORA_CR          5
 
 // This is the device serial you'll type into the app's IoT tab ("Paired
@@ -79,10 +84,41 @@
 // ═══════════════════════════════════════════════════════════════════════
 Adafruit_SSD1306 oled(OLED_WIDTH, OLED_HEIGHT, &Wire, OLED_RESET);
 
-// Last received telemetry per collar (track up to 8 collars)
+// ── Over-the-air packet — MUST exactly match CollarPacket in collar_node.ino ──
+enum Activity : uint8_t { ACT_RESTING = 0, ACT_GRAZING = 1, ACT_WALKING = 2, ACT_RUNNING = 3, ACT_UNKNOWN = 255 };
+
+struct __attribute__((packed)) CollarPacket {
+  char     collarId[8];
+  int16_t  tempC_x10;
+  uint8_t  heartRate;
+  int32_t  lat_x1e6;
+  int32_t  lon_x1e6;
+  uint16_t gpsAcc_x10;
+  uint16_t moveMag;
+  uint8_t  activity;
+  uint8_t  battPct;
+  uint8_t  flags;
+  uint16_t pkt;
+};  // sizeof == 28 bytes
+
+const char* activityName(uint8_t a) {
+  switch (a) {
+    case ACT_RESTING: return "Resting";
+    case ACT_GRAZING: return "Grazing";
+    case ACT_WALKING: return "Walking";
+    case ACT_RUNNING: return "Running";
+    default:          return "Unknown";
+  }
+}
+
+// Max collars one base station tracks locally (OLED rotation + RAM budget).
+// At SF7 + this 28-byte packet, the RF layer comfortably supports 30+ collars
+// at the 10s report interval (~22% channel utilization) — see
+// hardware/HARDWARE_DESIGN.md "Network Capacity" section for the full numbers.
+#define MAX_COLLARS 40
+
 struct CollarRecord {
   String  collarId;
-  String  animalName;
   float   temp;
   int     hr;
   String  activity;
@@ -94,7 +130,7 @@ struct CollarRecord {
   unsigned long lastSeen;
 };
 
-CollarRecord collars[8];
+CollarRecord collars[MAX_COLLARS];
 int          collarCount  = 0;
 int          oledPage     = 0;         // Which collar to show on OLED
 unsigned long lastOledSwitch = 0;
@@ -150,34 +186,33 @@ void loop() {
 //  LORA RECEIVE
 // ═══════════════════════════════════════════════════════════════════════
 void handleLoRaPacket(int size) {
-  String raw = "";
-  while (LoRa.available()) raw += (char)LoRa.read();
+  if (size != sizeof(CollarPacket)) {
+    // Not one of ours (or a corrupted/partial packet) — drop it rather than
+    // mis-parse garbage into a collar record.
+    while (LoRa.available()) LoRa.read();
+    Serial.printf("[LoRa] RX %d bytes — expected %u, dropped\n", size, (unsigned)sizeof(CollarPacket));
+    return;
+  }
+
+  CollarPacket pkt;
+  LoRa.readBytes((uint8_t*)&pkt, sizeof(pkt));
   int rssi = LoRa.packetRssi();
 
   digitalWrite(PIN_LED_LORA, HIGH);
   totalReceived++;
-  Serial.printf("[LoRa] RX %d bytes  RSSI=%d dBm\n", size, rssi);
-  Serial.println(raw);
 
-  // Parse JSON
-  StaticJsonDocument<512> doc;
-  DeserializationError err = deserializeJson(doc, raw);
-  if (err) {
-    Serial.printf("[JSON] Parse error: %s\n", err.c_str());
-    digitalWrite(PIN_LED_LORA, LOW);
-    return;
-  }
+  char idBuf[9];
+  memcpy(idBuf, pkt.collarId, 8);
+  idBuf[8] = '\0';
+  Serial.printf("[LoRa] RX %s  %d bytes  RSSI=%d dBm  pkt#%u\n", idBuf, size, rssi, pkt.pkt);
 
-  // Update collar record
-  updateCollarRecord(doc, rssi);
+  updateCollarRecord(pkt, idBuf, rssi);
 
-  // Forward to API
+  bool anyAlert = (pkt.flags & 0x02) || (pkt.flags & 0x04);  // fever | theft
   if (WiFi.status() == WL_CONNECTED) {
-    forwardToAPI(raw, doc);
+    forwardToAPI(pkt, idBuf, rssi, anyAlert);
   }
 
-  // Alert LED
-  bool anyAlert = doc["fever"].as<bool>() || doc["theft"].as<bool>();
   digitalWrite(PIN_LED_ALERT, anyAlert ? HIGH : LOW);
 
   updateOLED();
@@ -185,38 +220,53 @@ void handleLoRaPacket(int size) {
   digitalWrite(PIN_LED_LORA, LOW);
 }
 
-void updateCollarRecord(JsonDocument& doc, int rssi) {
-  String id = doc["id"].as<String>();
-
-  // Find or create record
+void updateCollarRecord(const CollarPacket& pkt, const char* id, int rssi) {
   int idx = -1;
   for (int i = 0; i < collarCount; i++) {
     if (collars[i].collarId == id) { idx = i; break; }
   }
-  if (idx == -1 && collarCount < 8) {
+  if (idx == -1 && collarCount < MAX_COLLARS) {
     idx = collarCount++;
   }
-  if (idx == -1) return;  // Table full
+  if (idx == -1) return;  // Table full — raise MAX_COLLARS if you have a bigger herd
 
-  collars[idx].collarId   = id;
-  collars[idx].animalName = doc["animal"].as<String>();
-  collars[idx].temp       = doc["temp"].as<float>();
-  collars[idx].hr         = doc["hr"].as<int>();
-  collars[idx].activity   = doc["activity"].as<String>();
-  collars[idx].inZone     = doc["inZone"].as<bool>();
-  collars[idx].batt       = doc["batt"].as<int>();
-  collars[idx].fever      = doc["fever"].as<bool>();
-  collars[idx].theft      = doc["theft"].as<bool>();
-  collars[idx].rssi       = rssi;
-  collars[idx].lastSeen   = millis();
+  collars[idx].collarId = id;
+  collars[idx].temp     = pkt.tempC_x10 / 10.0f;
+  collars[idx].hr       = pkt.heartRate;
+  collars[idx].activity = activityName(pkt.activity);
+  collars[idx].inZone   = pkt.flags & 0x01;
+  collars[idx].batt     = pkt.battPct;
+  collars[idx].fever    = pkt.flags & 0x02;
+  collars[idx].theft    = pkt.flags & 0x04;
+  collars[idx].rssi     = rssi;
+  collars[idx].lastSeen = millis();
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-//  API FORWARDING
+//  API FORWARDING — re-expand the compact packet into JSON for the backend;
+//  WiFi/HTTP has no airtime budget to worry about, unlike the LoRa hop.
 // ═══════════════════════════════════════════════════════════════════════
-void forwardToAPI(const String& rawJson, JsonDocument& doc) {
+void forwardToAPI(const CollarPacket& pkt, const char* id, int rssi, bool isAlert) {
+  StaticJsonDocument<384> doc;
+  doc["id"]       = id;
+  doc["temp"]     = pkt.tempC_x10 / 10.0f;
+  doc["hr"]       = pkt.heartRate;
+  doc["lat"]      = pkt.lat_x1e6 / 1000000.0;
+  doc["lon"]      = pkt.lon_x1e6 / 1000000.0;
+  doc["gpsAcc"]   = pkt.gpsAcc_x10 / 10.0f;
+  doc["activity"] = activityName(pkt.activity);
+  doc["move"]     = pkt.moveMag;
+  doc["inZone"]   = (bool)(pkt.flags & 0x01);
+  doc["batt"]     = pkt.battPct;
+  doc["fever"]    = (bool)(pkt.flags & 0x02);
+  doc["theft"]    = (bool)(pkt.flags & 0x04);
+  doc["pkt"]      = pkt.pkt;
+  doc["rssi"]     = rssi;
+
+  String body;
+  serializeJson(doc, body);
+
   HTTPClient http;
-  bool isAlert = doc["fever"].as<bool>() || doc["theft"].as<bool>();
   String endpoint = String(API_HOST) + (isAlert ? API_ALERT_ENDPOINT : API_IOT_ENDPOINT);
 
   http.begin(endpoint);
@@ -224,7 +274,7 @@ void forwardToAPI(const String& rawJson, JsonDocument& doc) {
   http.addHeader("X-Station-ID", STATION_ID);
   http.setTimeout(3000);
 
-  int code = http.POST(rawJson);
+  int code = http.POST(body);
   if (code > 0) {
     totalForwarded++;
     Serial.printf("[API] POST %s → %d\n", endpoint.c_str(), code);
@@ -278,7 +328,7 @@ void updateOLED() {
   oled.setTextColor(SSD1306_BLACK);
   oled.setTextSize(1);
   oled.setCursor(2, 3);
-  oled.printf("%s  [%d/%d]", c.animalName.c_str(), oledPage + 1, collarCount);
+  oled.printf("%s  [%d/%d]", c.collarId.c_str(), oledPage + 1, collarCount);
   oled.setTextColor(SSD1306_WHITE);
 
   // Vitals

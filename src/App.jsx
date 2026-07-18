@@ -16,7 +16,7 @@ import {
   Truck, BarChart3, Globe, AlertTriangle, CheckCircle, ChevronRight,
   Zap, Clock, ArrowRight, Tag, Pill, Wifi, MapPin, FileText,
   RefreshCw, DollarSign, Target, Box, PhoneCall, Star, Wheat, Store,
-  Sprout, Check, Syringe, Shield
+  Sprout, Check, Syringe, Shield, UserPlus, X
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import './App.css';
@@ -1059,6 +1059,22 @@ const DEMO_PENDING_CLEARANCES = [
   { id: 301, animal_name: 'Zodwa', species: 'Cattle', seller_name: 'Tendai Chiweshe', product_name: 'Zodwa — Mashona Cow', created_at: '2026-07-15' },
 ];
 
+// Zimbabwe-specific format validation for officer provisioning — mirrors
+// backend/app.py and src/components/IntelAI/AuthPortal.jsx so the form
+// catches typos before the API round-trip.
+const ZW_MOBILE_PREFIXES = ['071', '073', '077', '078'];
+const isValidZwPhone = (raw) => {
+  const digits = (raw || '').replace(/\D/g, '');
+  let n = digits;
+  if (n.startsWith('263')) n = '0' + n.slice(3);
+  else if (!n.startsWith('0') && n.length === 9) n = '0' + n;
+  return n.length === 10 && ZW_MOBILE_PREFIXES.some(p => n.startsWith(p));
+};
+const ZW_ID_RE = /^\d{2}[\s-]?\d{4,7}[\s-]?[A-Za-z][\s-]?\d{2}$/;
+const isValidZwNationalId = (raw) => ZW_ID_RE.test((raw || '').trim());
+
+const EMPTY_OFFICER_FORM = { full_name: '', phone: '', national_id_number: '', badge_number: '', station: '', jurisdiction_province: '', email: '', password: '' };
+
 const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
   const [verifications, setVerifications] = useState([]);
   const [clearances,    setClearances]    = useState([]);
@@ -1066,7 +1082,42 @@ const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
   const [busyId,        setBusyId]        = useState(null);
   const [feedback,      setFeedback]      = useState(null);
 
+  const [showAddOfficer, setShowAddOfficer] = useState(false);
+  const [officerForm,    setOfficerForm]    = useState(EMPTY_OFFICER_FORM);
+  const [officerBusy,    setOfficerBusy]    = useState(false);
+  const [officerError,   setOfficerError]   = useState('');
+  const setOfficerField = (k, v) => setOfficerForm(p => ({ ...p, [k]: v }));
+
   const authHeaders = { Authorization: `Bearer ${currentUser?.token}` };
+
+  const provisionOfficer = async (e) => {
+    e.preventDefault();
+    setOfficerError('');
+    if (!officerForm.full_name.trim()) return setOfficerError('Full name is required.');
+    if (!isValidZwPhone(officerForm.phone)) return setOfficerError('Enter a valid Zimbabwean mobile number (Econet 077/078, NetOne 071, or Telecel 073).');
+    if (!isValidZwNationalId(officerForm.national_id_number)) return setOfficerError('National ID number doesn\'t match the Zimbabwe format, e.g. 63-1234567A00.');
+    if (!officerForm.badge_number.trim()) return setOfficerError('Badge number is required.');
+    if (officerForm.password.length < 8) return setOfficerError('Set a temporary password of at least 8 characters — share it with the officer so they can log in and should change it after.');
+
+    setOfficerBusy(true);
+    try {
+      const res = await fetch(`${API}/users`, {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...officerForm, role: 'Police' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setOfficerError(data.error || 'Could not provision this officer.'); return; }
+      setFeedback(`${officerForm.full_name} provisioned and verified — give them their phone number and the temporary password you just set so they can log in.`);
+      setOfficerForm(EMPTY_OFFICER_FORM);
+      setShowAddOfficer(false);
+      setTimeout(() => setFeedback(null), 6000);
+    } catch {
+      setOfficerError('Could not reach the PFUMA API. Is the Flask backend running?');
+    } finally {
+      setOfficerBusy(false);
+    }
+  };
 
   const loadQueues = useCallback(async () => {
     try {
@@ -1131,12 +1182,20 @@ const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
             <h2 className="text-2xl font-black text-white leading-tight">{greet()}, {currentUser?.name || 'Officer'}</h2>
             <p className="text-gray-400 text-sm font-medium mt-1">Review signup verifications and livestock sale-clearance requests before they go live on PFUMA.</p>
           </div>
-          {!apiOnline && (
-            <div className="flex items-center gap-2 bg-yellow-400/20 border border-yellow-400/30 px-4 py-2.5 rounded-2xl shrink-0">
-              <AlertTriangle size={13} className="text-yellow-400" />
-              <span className="text-xs font-black text-yellow-300">Demo mode — start Flask API to go live</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3 shrink-0">
+            {!apiOnline && (
+              <div className="flex items-center gap-2 bg-yellow-400/20 border border-yellow-400/30 px-4 py-2.5 rounded-2xl">
+                <AlertTriangle size={13} className="text-yellow-400" />
+                <span className="text-xs font-black text-yellow-300">Demo mode — start Flask API to go live</span>
+              </div>
+            )}
+            <button
+              onClick={() => { setShowAddOfficer(s => !s); setOfficerError(''); }}
+              className="flex items-center gap-2 bg-white text-red-900 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wide hover:bg-red-50 transition"
+            >
+              <UserPlus size={14} /> {showAddOfficer ? 'Cancel' : 'Add Officer'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1144,6 +1203,85 @@ const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
         <div className="flex items-center gap-2 bg-green-900/30 border border-green-700/40 text-green-300 text-xs font-black px-4 py-3 rounded-xl" role="status">
           <CheckCircle size={14} /> {feedback}
         </div>
+      )}
+
+      {/* Provision a new Police officer — Police accounts are not self-service
+          signup; an existing verified officer creates and verifies the next
+          one here, same as real ZRP unit onboarding. */}
+      {showAddOfficer && (
+        <form onSubmit={provisionOfficer} className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-sm font-black text-white mb-1">Provision New Officer</h3>
+              <p className="text-[11px] text-gray-500 font-medium">Police accounts aren't self-service signup — an existing verified officer creates and verifies the next one. The account is created already-verified.</p>
+            </div>
+            <button type="button" onClick={() => setShowAddOfficer(false)} className="text-gray-500 hover:text-white transition p-1">
+              <X size={16} />
+            </button>
+          </div>
+
+          {officerError && (
+            <div className="flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-[11px] font-bold px-3 py-2 rounded-lg">
+              <AlertTriangle size={12} className="shrink-0" /> {officerError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Full Name *
+              <input required value={officerForm.full_name} onChange={e => setOfficerField('full_name', e.target.value)}
+                placeholder="e.g. Officer Tapiwa Gumbo"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Phone Number *
+              <input required value={officerForm.phone} onChange={e => setOfficerField('phone', e.target.value)}
+                placeholder="+263 77 123 4567"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              National ID Number *
+              <input required value={officerForm.national_id_number} onChange={e => setOfficerField('national_id_number', e.target.value)}
+                placeholder="e.g. 63-1234567A00"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Badge Number *
+              <input required value={officerForm.badge_number} onChange={e => setOfficerField('badge_number', e.target.value)}
+                placeholder="e.g. ZRP-STU-0231"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Station
+              <input value={officerForm.station} onChange={e => setOfficerField('station', e.target.value)}
+                placeholder="e.g. Chegutu Police Station"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Jurisdiction Province
+              <input value={officerForm.jurisdiction_province} onChange={e => setOfficerField('jurisdiction_province', e.target.value)}
+                placeholder="e.g. Mashonaland West"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Email
+              <input type="email" value={officerForm.email} onChange={e => setOfficerField('email', e.target.value)}
+                placeholder="officer@zrp.gov.zw"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+            <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
+              Temporary Password *
+              <input required type="password" value={officerForm.password} onChange={e => setOfficerField('password', e.target.value)}
+                placeholder="At least 8 characters — share it with them"
+                className="w-full mt-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-medium text-white placeholder:text-gray-600 focus:outline-none focus:border-red-500/50" />
+            </label>
+          </div>
+
+          <button type="submit" disabled={officerBusy}
+            className="w-full py-2.5 bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wide hover:bg-red-600 transition disabled:opacity-40">
+            {officerBusy ? 'Provisioning…' : 'Provision & Verify Officer'}
+          </button>
+        </form>
       )}
 
       {/* KPIs */}

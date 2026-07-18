@@ -12,7 +12,9 @@ Two PCB designs:
 
 Communication chain:
   Animal Collar (CN-01)
-      ↓ LoRa 433 MHz (up to 5 km open field)
+      ↓ LoRa 433 MHz — ~1-2km typical farm terrain at the firmware's current
+        SF7 setting (traded down from a ~5km SF9 link-budget max to support
+        30+ collars per base station — see "Network Capacity" below)
   Farm Base Station (BS-01)
       ↓ WiFi / Ethernet
   Flask API (backend/app.py)
@@ -357,6 +359,64 @@ Pin  Name   Net
 3    SCL    I2C_SCL → U1 IO22
 4    SDA    I2C_SDA → U1 IO21
 
+
+---
+
+## NETWORK CAPACITY — HOW MANY COLLARS PER BASE STATION
+
+This is a real, computed answer, not a marketing figure. LoRa airtime was calculated with the standard Semtech formula (AN1200.13) from the *actual* firmware settings in `collar_node.ino` / `base_station.ino`.
+
+### The problem with the original design
+
+The first firmware revision used **SF9 + a verbose JSON payload** (~230 bytes with realistic field values) at a 10s report interval. That works out to **~1.15 seconds of LoRa airtime per packet** — so:
+
+| Collars reporting | Channel utilization | Outcome |
+|---|---|---|
+| 1 | 11.5% | fine |
+| 4 | 45.9% | workable, some collisions |
+| 8 (the old hard-coded limit) | **91.8%** | severe collisions — most packets lost |
+
+The `collars[8]` array size in the old firmware implied a capacity the radio link could not actually deliver.
+
+### The fix: SF7 + a compact binary packet
+
+Both `.ino` files now use **SF7** and a **28-byte binary `CollarPacket` struct** (see the struct definition in either firmware file) instead of JSON-over-LoRa — JSON is only built once the base station forwards a reading to the Flask API over WiFi, where airtime is not a constraint. This gets per-packet airtime down to **~72ms**:
+
+| Collars reporting | Channel utilization | Outcome |
+|---|---|---|
+| 8 | 5.8% | very comfortable |
+| 15 | 10.8% | comfortable |
+| 20 | 14.4% | comfortable |
+| 30 | 21.6% | workable, some collisions but self-healing (next report 10s later) |
+
+`base_station.ino` now tracks up to **`MAX_COLLARS = 40`** locally, matching this real capacity rather than an arbitrary number.
+
+### The trade-off: range
+
+SF7 trades maximum range for airtime. The SF9 "~5km open field" figure quoted elsewhere in this doc was a link-budget maximum, not a typical farm-deployment distance. SF7 on the same SX1278 hardware (17dBm) typically covers **~1-2km on farm terrain** — plenty for a single farm's paddocks in most cases. If your grazing area is unusually large or hilly:
+
+- Raise `LORA_SF` back toward 9 in both firmware files (re-run this same airtime math for your target collar count first — see the formula below), or
+- Deploy a second base station rather than pushing more range out of one, or
+- Keep SF7 but reduce the report interval's collision risk further by adding a small random jitter to `REPORT_INTERVAL_MS` per collar (recommended regardless — see "Further improvements" below).
+
+### The airtime formula, if you change any of this
+
+```
+Ts_ms          = 2^SF / BW * 1000
+T_preamble_ms  = (preamble_symbols + 4.25) * Ts_ms      // preamble_symbols = 8 (library default)
+n_payload_syms = 8 + max(ceil((8*PL - 4*SF + 28 + 16*CRC - 20*IH) / (4*(SF - 2*DE))) * (CR + 4), 0)
+T_payload_ms   = n_payload_syms * Ts_ms
+airtime_ms     = T_preamble_ms + T_payload_ms
+
+channel_utilization(N collars) = N * (airtime_ms / 1000) / report_interval_s
+```
+Where `PL` = payload bytes, `CRC=1`, `IH=0` (explicit header), `DE=0` (low data rate optimization off, not needed below SF11 at 125kHz), `CR=1` (for the firmware's 4/5 coding rate). Keep `channel_utilization` under ~20-25% for reliable delivery with occasional retries; under ~10% for near-zero collision loss.
+
+### Further improvements (not yet implemented)
+
+- **Per-collar TX jitter**: add `+random(0, 1500)` ms to each collar's report interval so collars don't clock-drift into transmitting simultaneously — cheap insurance against the "worst case all N collars fire at once" scenario the utilization math assumes.
+- **Multiple base stations**: for herds beyond ~30 head or farms with dead zones, add a second BS-01 rather than over-loading one channel — each is inexpensive (~$25-43, see `BUDGET_PROPOSAL.md`).
+- **Frequency/channel planning**: if you deploy multiple base stations covering overlapping areas, give them different sync words or frequencies within the 433MHz ISM band to avoid one base station hearing another's collars as noise. Confirm your local ISM-band duty-cycle/channel rules with POTRAZ before a multi-station commercial deployment.
 
 ---
 

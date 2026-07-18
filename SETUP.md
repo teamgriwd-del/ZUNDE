@@ -123,7 +123,8 @@ Every endpoint except `/`, `/auth/register`, `/auth/login`, `/feed`, and `/feed/
 | GET/PATCH/POST | `/clearances`, `/clearances/:id` | Police sale-clearance queue |
 | POST | `/listings/:id/bid`, GET `/listings/:id/bids` | Bidding — blocked until a livestock listing is cleared |
 | GET/POST/PATCH | `/iot-devices`, `/iot-devices/pair`, `/iot-devices/:id` | Pair a physical collar/base station (see `IOT_HARDWARE_GUIDE.md`) |
-| POST | `/api/iot/telemetry`, `/api/iot/alert` | Firmware intake, authenticated by device serial |
+| POST | `/api/iot/telemetry`, `/api/iot/alert` | Firmware intake, authenticated by device serial — stored in `iot_readings` |
+| GET | `/animals/:id/iot-readings` | Recent real readings for one animal's paired collar |
 | GET/POST | `/feed` | Feed types for analyzer (public, no auth) |
 | GET | `/feed/search?q=maize` | Search feed by name or species (public) |
 | GET | `/cases` | Vet cases / consultations, scoped by role |
@@ -147,6 +148,7 @@ Every endpoint except `/`, `/auth/register`, `/auth/login`, `/feed`, and `/feed/
 | `sale_clearances` | Shared | Police sign-off on a livestock sale before it's listed |
 | `bids` | Shared | Offers placed on a marketplace listing |
 | `iot_devices` | Shared | Paired collar/base-station serials, per owner |
+| `iot_readings` | Shared | Real telemetry history from a paired collar |
 
 ---
 
