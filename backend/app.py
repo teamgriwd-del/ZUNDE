@@ -415,8 +415,16 @@ def get_users():
     if province:
         sql += " AND province = %s"; params.append(province)
     if q:
-        sql += " AND (full_name LIKE %s OR org_name LIKE %s OR province LIKE %s)"
+        # Matches name, business/farm name, province, or phone — phone match
+        # uses the same digit-normalization as signup so "077 123 4567",
+        # "+263771234567" etc. all find the same account.
+        q_digits = re.sub(r'\D', '', q)
+        sql += " AND (full_name LIKE %s OR org_name LIKE %s OR province LIKE %s"
         params += [f'%{q}%', f'%{q}%', f'%{q}%']
+        if q_digits:
+            sql += " OR phone LIKE %s"
+            params.append(f'%{q_digits}%')
+        sql += ")"
     # Police officers aren't listed in the general directory — they're reached
     # only through the clearance/verification workflow, not public search.
     if requester['role'] != 'Police':
@@ -486,6 +494,150 @@ def get_user(user_id):
     if user['role'] == 'Police' and g.current_user['role'] != 'Police' and g.current_user['id'] != user_id:
         return jsonify({"error": "User not found"}), 404
     return jsonify(public_user_view(user, g.current_user))
+
+
+# ── MESSENGER (real conversations, any verified user to any other) ──────
+def _conversation_participant_or_404(c, conversation_id, requester_id):
+    c.execute("SELECT * FROM conversations WHERE id=%s", (conversation_id,))
+    conv = c.fetchone()
+    if not conv or requester_id not in (conv['user_a_id'], conv['user_b_id']):
+        return None
+    return conv
+
+
+@app.route('/conversations', methods=['GET'])
+@require_auth
+def get_conversations():
+    me = g.current_user['id']
+    db = get_db()
+    c = db.cursor()
+    c.execute("""
+        SELECT * FROM conversations WHERE user_a_id=%s OR user_b_id=%s
+        ORDER BY last_message_at DESC
+    """, (me, me))
+    convs = c.fetchall()
+    result = []
+    for conv in convs:
+        other_id = conv['user_b_id'] if conv['user_a_id'] == me else conv['user_a_id']
+        c.execute("SELECT * FROM users WHERE id=%s", (other_id,))
+        other = c.fetchone()
+        if not other:
+            continue
+        c.execute("""
+            SELECT message, sender_id, sent_at FROM conversation_messages
+            WHERE conversation_id=%s ORDER BY sent_at DESC LIMIT 1
+        """, (conv['id'],))
+        last = c.fetchone()
+        c.execute("""
+            SELECT COUNT(*) as n FROM conversation_messages
+            WHERE conversation_id=%s AND sender_id!=%s AND read_at IS NULL
+        """, (conv['id'], me))
+        unread = c.fetchone()['n']
+        result.append({
+            **conv,
+            "other_user": public_user_view(other, g.current_user),
+            "last_message": last['message'] if last else None,
+            "last_message_is_own": bool(last and last['sender_id'] == me),
+            "unread_count": unread,
+        })
+    db.close()
+    return jsonify(result)
+
+
+@app.route('/conversations', methods=['POST'])
+@require_auth
+def create_conversation():
+    """Starts (or, for a plain General chat, reuses) a conversation with
+    another verified user. Any verified user can message any other verified
+    user directly — PFUMA's roles work together, this isn't role-gated."""
+    d = request.json or {}
+    me = g.current_user['id']
+    other_id = d.get('other_user_id')
+    if not other_id or int(other_id) == me:
+        return jsonify({"error": "other_user_id is required and must not be yourself"}), 400
+
+    subject = (d.get('subject') or '').strip() or None
+    category = d.get('category') or 'General'
+    animal_id = d.get('animal_id') or None
+
+    db = get_db()
+    c = db.cursor()
+    c.execute("SELECT id, verification_status FROM users WHERE id=%s", (other_id,))
+    other = c.fetchone()
+    if not other:
+        db.close(); return jsonify({"error": "User not found"}), 404
+    if other['verification_status'] != 'verified':
+        db.close(); return jsonify({"error": "That account isn't verified yet — you can message them once they're verified."}), 403
+
+    if category == 'General':
+        c.execute("""
+            SELECT * FROM conversations
+            WHERE category='General' AND ((user_a_id=%s AND user_b_id=%s) OR (user_a_id=%s AND user_b_id=%s))
+            LIMIT 1
+        """, (me, other_id, other_id, me))
+        existing = c.fetchone()
+        if existing:
+            db.close()
+            return jsonify({"id": existing['id'], "reused": True})
+
+    c.execute("""
+        INSERT INTO conversations (user_a_id, user_b_id, subject, category, animal_id)
+        VALUES (%s,%s,%s,%s,%s)
+    """, (me, other_id, subject, category, animal_id))
+    conv_id = c.lastrowid
+    db.commit()
+    db.close()
+    return jsonify({"id": conv_id, "reused": False}), 201
+
+
+@app.route('/conversations/<int:conversation_id>/messages', methods=['GET'])
+@require_auth
+def get_conversation_messages(conversation_id):
+    me = g.current_user['id']
+    db = get_db()
+    c = db.cursor()
+    conv = _conversation_participant_or_404(c, conversation_id, me)
+    if not conv:
+        db.close(); return jsonify({"error": "Conversation not found"}), 404
+
+    c.execute("""
+        SELECT * FROM conversation_messages WHERE conversation_id=%s ORDER BY sent_at ASC
+    """, (conversation_id,))
+    msgs = c.fetchall()
+    c.execute("""
+        UPDATE conversation_messages SET read_at=NOW()
+        WHERE conversation_id=%s AND sender_id!=%s AND read_at IS NULL
+    """, (conversation_id, me))
+    db.commit()
+    db.close()
+    return jsonify(msgs)
+
+
+@app.route('/conversations/<int:conversation_id>/messages', methods=['POST'])
+@require_auth
+def send_conversation_message(conversation_id):
+    me = g.current_user['id']
+    d = request.json or {}
+    text = (d.get('message') or '').strip()[:2000]
+    if not text:
+        return jsonify({"error": "message is required"}), 400
+
+    db = get_db()
+    c = db.cursor()
+    conv = _conversation_participant_or_404(c, conversation_id, me)
+    if not conv:
+        db.close(); return jsonify({"error": "Conversation not found"}), 404
+
+    c.execute("""
+        INSERT INTO conversation_messages (conversation_id, sender_id, message) VALUES (%s,%s,%s)
+    """, (conversation_id, me, text))
+    msg_id = c.lastrowid
+    c.execute("UPDATE conversations SET last_message_at=NOW() WHERE id=%s", (conversation_id,))
+    db.commit()
+    c.execute("SELECT * FROM conversation_messages WHERE id=%s", (msg_id,))
+    msg = c.fetchone()
+    db.close()
+    return jsonify(msg), 201
 
 
 # ── ANIMALS ───────────────────────────────────────────────────

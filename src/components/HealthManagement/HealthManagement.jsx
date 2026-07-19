@@ -259,8 +259,8 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
 
       {/* ── NO ANIMAL SELECTED ── */}
       {!selectedAnimal ? (
-        <div className="grid grid-cols-3 gap-6">
-          <div className="col-span-2 bg-white border-2 border-dashed border-gray-200 rounded-2xl py-16 flex flex-col items-center text-center">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white border-2 border-dashed border-gray-200 rounded-2xl py-16 flex flex-col items-center text-center">
             <HeartPulse size={40} className="text-gray-200 mb-3" />
             <p className="text-sm font-black text-gray-400">Select an animal above to view its health schedule</p>
             <p className="text-[11px] text-gray-300 font-medium mt-1">{animals.length} animal{animals.length !== 1 ? 's' : ''} in your herd</p>
@@ -271,7 +271,7 @@ const HealthManagement = ({ animals, completedTasks, setCompletedTasks, auditLog
 
         <div className="space-y-6">
           {/* ── ROW 1: Lifecycle + Medication + Cabinet ── */}
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* LIFECYCLE & BREED */}
             <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col shadow-sm">

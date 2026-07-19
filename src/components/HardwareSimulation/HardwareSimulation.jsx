@@ -447,10 +447,10 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
       </div>
 
       {/* ── MAIN GRID ── */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* LEFT 2/3 */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
 
           {/* Vital cards */}
           <div>
@@ -460,7 +460,7 @@ const HardwareSimulation = ({ animals = [], currentUser }) => {
               </h3>
               <span className="text-[10px] text-gray-400 font-medium">Updates every 5 sec · 3-point filtered</span>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <VitalCard
                 icon={Thermometer}
                 label="Body Temperature"

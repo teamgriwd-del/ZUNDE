@@ -65,7 +65,7 @@ const PostForm = ({ currentUser, onSubmit, onCancel, animals }) => {
         </button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Category</label>
             <select className={inputCls + ' appearance-none'} value={form.category} onChange={e => set('category', e.target.value)}>
@@ -92,7 +92,7 @@ const PostForm = ({ currentUser, onSubmit, onCancel, animals }) => {
           <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Product / Item Name *</label>
           <input className={inputCls} type="text" required placeholder="e.g. Brahman Bull, Soya Meal, Borehole Pump" value={form.product_name} onChange={e => set('product_name', e.target.value)} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5">Price (USD) *</label>
             <input className={inputCls} type="number" min="0" step="0.01" required placeholder="0.00" value={form.price} onChange={e => set('price', e.target.value)} />

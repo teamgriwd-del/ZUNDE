@@ -1,431 +1,411 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ZIMBABWE_REGIONS, EMERGENCY_HOTLINES } from './vetData';
 import {
-  Send, Plus, MapPin, Phone, AlertCircle, CheckCircle,
-  ShieldCheck, Video, Mic, FileText, BellRing, UserCheck, Zap, Radar,
-  Clock, X, Search, ChevronDown, MoreVertical, ArrowLeft, Paperclip,
-  Image, Smile, Check, CheckCheck, PhoneCall, Siren, Stethoscope, Pill,
-  Sprout, Store, Users, Lock
+  Send, Plus, MapPin, Phone, ShieldCheck, Video,
+  BellRing, Zap, Clock, X, Search, ChevronDown, MoreVertical, ArrowLeft, Paperclip,
+  Check, CheckCheck, PhoneCall, Stethoscope, Pill,
+  Sprout, Store, Users, Lock, Loader2
 } from 'lucide-react';
 import './VetCommunication.css';
 
-// ── Platform-wide contact directory ─────────────────────────────────────────
-const CONTACTS = [
-  // Veterinary officers
-  { id: 'vet-1', type: 'Vet', name: 'Dr. T. Moyo', role: 'DVS Duty Officer', province: 'Mashonaland West', avatar: 'TM', color: 'bg-emerald-600', online: true, speciality: 'Tick-borne Diseases' },
-  { id: 'vet-2', type: 'Vet', name: 'Dr. R. Chikwanda', role: 'Regional Vet Officer', province: 'Harare', avatar: 'RC', color: 'bg-blue-600', online: true, speciality: 'Reproductive Health' },
-  { id: 'vet-3', type: 'Vet', name: 'Dr. S. Ndlovu', role: 'Emergency Response', province: 'Bulawayo', avatar: 'SN', color: 'bg-purple-600', online: false, speciality: 'FMD & CBPP' },
-  { id: 'vet-4', type: 'Vet', name: 'DVS Emergency Line', role: 'Ministry of Agriculture', province: 'National', icon: Siren, color: 'bg-red-600', online: true, speciality: 'All Emergencies' },
+const API = 'http://localhost:5000';
 
-  // Suppliers
-  { id: 'sup-1', type: 'Supplier', name: 'AgroChem Zim', role: 'Medicine & Vaccine Supplier', province: 'Harare', avatar: 'AC', color: 'bg-amber-500', online: true, speciality: 'Vaccines, dewormers & vitamins' },
-  { id: 'sup-2', type: 'Supplier', name: 'VetDirect Wholesale', role: 'Animal Health Distributor', province: 'Bulawayo', avatar: 'VD', color: 'bg-orange-600', online: false, speciality: 'Bulk medicine & feed orders' },
-
-  // Other farmers
-  { id: 'farm-1', type: 'Farmer', name: 'P. Banda', role: 'Dairy Farmer', province: 'Mashonaland East', avatar: 'PB', color: 'bg-green-600', online: true, speciality: 'Dairy herd management' },
-  { id: 'farm-2', type: 'Farmer', name: 'L. Sibanda', role: 'Poultry & Goat Farmer', province: 'Matabeleland South', avatar: 'LS', color: 'bg-lime-600', online: false, speciality: 'Small livestock & feed swaps' },
-
-  // Retailers / buyers
-  { id: 'ret-1', type: 'Retailer', name: 'Harare Meat Wholesalers', role: 'Livestock Buyer', province: 'Harare', avatar: 'HM', color: 'bg-purple-700', online: true, speciality: 'Beef cattle & feedlot buyer' },
-  { id: 'ret-2', type: 'Retailer', name: 'Bulawayo Livestock Market', role: 'Auction House', province: 'Bulawayo', avatar: 'BL', color: 'bg-violet-600', online: true, speciality: 'Weekly cattle auctions' },
-];
-
+// Backend role strings, used consistently — no more separate "type" vocabulary.
 const ROLE_META = {
-  Vet:      { icon: Stethoscope, color: 'text-pfuma-green', label: 'Vets' },
-  Supplier: { icon: Pill,        color: 'text-amber-600',   label: 'Suppliers' },
-  Farmer:   { icon: Sprout,      color: 'text-green-600',   label: 'Farmers' },
-  Retailer: { icon: Store,       color: 'text-purple-600',  label: 'Retailers' },
+  Veterinarian: { icon: Stethoscope, color: 'bg-emerald-600', label: 'Vets' },
+  Supplier:     { icon: Pill,        color: 'bg-amber-500',   label: 'Suppliers' },
+  Farmer:       { icon: Sprout,      color: 'bg-green-600',   label: 'Farmers' },
+  Retailer:     { icon: Store,       color: 'bg-purple-700',  label: 'Retailers' },
+  Police:       { icon: ShieldCheck, color: 'bg-red-700',     label: 'Police' },
 };
 
 const FILTERS = [
-  { key: 'All',      label: 'All',       icon: Users },
-  { key: 'Vet',      label: 'Vets',      icon: Stethoscope },
-  { key: 'Supplier', label: 'Suppliers', icon: Pill },
-  { key: 'Farmer',   label: 'Farmers',   icon: Sprout },
-  { key: 'Retailer', label: 'Retailers', icon: Store },
+  { key: 'All',          label: 'All' },
+  { key: 'Veterinarian', label: 'Vets' },
+  { key: 'Supplier',     label: 'Suppliers' },
+  { key: 'Farmer',       label: 'Farmers' },
+  { key: 'Retailer',     label: 'Retailers' },
 ];
 
-const AUTO_RESPONSES = {
-  Vet: {
-    Emergency: [
-      "HIGH PRIORITY: Your case has been flagged. A duty officer is being notified. Please isolate the animal immediately.",
-      "Case registered. Expected response within 15 minutes. Do not move the animal or remove any discharge material.",
-      "Emergency Protocol Initiated. I have been dispatched. Maintain biosecurity until arrival."
-    ],
-    Vaccination: [
-      "Vaccination request received. Please confirm the animal's current weight and last vaccination date.",
-      "Your vaccination schedule has been reviewed. A certificate will be issued within 24 hours.",
-      "Vaccination certified. Please collect your movement permit from the District Vet Office."
-    ],
-    "Trade Certification": [
-      "Trade certification request received. A health inspection must be conducted before certificate issuance.",
-      "Please ensure all animals for export/trade have been dipped within the last 14 days.",
-      "Your export health certificate is being processed. Estimated: 2-3 working days."
-    ],
-    General: [
-      "Message received. A vet officer will respond shortly.",
-      "Thank you for contacting PFUMA Vet Services. We aim to respond within 1 hour."
-    ]
-  },
-  Supplier: [
-    "Thanks for reaching out! That item is in stock — would you like a quote?",
-    "Order noted. We can dispatch within 2 business days to your district.",
-    "Sure thing — let me check our warehouse and confirm pricing shortly."
-  ],
-  Farmer: [
-    "Hey, thanks for the message! Let me check with my herd and get back to you.",
-    "Sounds good — happy to help. What breed are you looking for?",
-    "I'll ask around the village too, will update you soon."
-  ],
-  Retailer: [
-    "Thanks for reaching out — could you share the animal's weight and health passport?",
-    "We can offer a competitive price for that grade. Can you send a few photos?",
-    "Noted — I'll review and come back with a bid shortly."
-  ]
+const sanitize = (str) => str.replace(/[<>]/g, '').trim().slice(0, 2000);
+
+// Deterministic colour + initials for a real user, since we don't fabricate
+// avatars — same person always renders the same colour.
+const AVATAR_COLORS = ['bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-amber-600', 'bg-rose-600', 'bg-cyan-600', 'bg-lime-600', 'bg-violet-600'];
+const colorForId = (id) => AVATAR_COLORS[Math.abs(id || 0) % AVATAR_COLORS.length];
+const initials = (name) => (name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?';
+
+// The backend (Flask/PyMySQL) serializes MySQL TIMESTAMP columns as RFC 2822
+// strings, e.g. "Sat, 19 Jul 2026 10:02:06 GMT" — the native Date
+// constructor parses that correctly on its own, no reformatting needed.
+const fmtTime = (raw) => {
+  if (!raw) return '';
+  const d = new Date(raw);
+  return isNaN(d) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+const fmtDate = (raw) => {
+  if (!raw) return '';
+  const d = new Date(raw);
+  return isNaN(d) ? '' : d.toLocaleDateString();
 };
 
-const INITIAL_CONVERSATIONS = [
-  {
-    id: 1,
-    contactId: 'vet-1',
-    status: 'Certified',
-    category: 'Vaccination',
-    animal: 'Bessie',
-    province: 'Mashonaland West',
-    priority: 'Routine',
-    subject: 'Brucellosis Booster — Bessie',
-    certificateIssued: true,
-    createdAt: new Date(Date.now() - 86400000 * 2).toLocaleDateString(),
-    messages: [
-      { id: 1, sender: 'Me', text: 'When is Bessie due for her next Brucellosis shot?', time: '09:14', read: true },
-      { id: 2, sender: 'Them', text: 'Based on her age of 2y 4m, she should have had her booster last month. I have issued a digital certificate for treatment. Please administer S19 under licensed supervision only.', time: '09:31', read: true }
-    ]
-  },
-  {
-    id: 2,
-    contactId: 'vet-4',
-    status: 'EMERGENCY',
-    category: 'Emergency',
-    animal: 'Thunder',
-    province: 'Mashonaland West',
-    priority: 'Critical',
-    subject: 'Suspected FMD — Thunder',
-    isVideoAvailable: true,
-    createdAt: new Date().toLocaleDateString(),
-    messages: [
-      { id: 1, sender: 'Me', text: 'Thunder is showing blisters on his snout and is limping badly. He refused feed this morning.', time: '06:42', read: true },
-      { id: 2, sender: 'Them', text: 'HIGH PRIORITY: Emergency officer dispatched. Isolate Thunder in a separate pen immediately. Do not allow any movement of animals, people, or vehicles off the property. Switch to Video Consult now for visual confirmation.', time: '06:55', read: true }
-    ]
-  }
-];
-
-const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const sanitize = (str) => str.replace(/[<>]/g, '').trim().slice(0, 500);
-
-const Avatar = ({ contact, size = 'md' }) => {
+const Avatar = ({ user, size = 'md' }) => {
   const sizeClass = size === 'sm' ? 'w-9 h-9 text-xs' : size === 'lg' ? 'w-14 h-14 text-lg' : 'w-11 h-11 text-sm';
   const iconSize = size === 'sm' ? 16 : size === 'lg' ? 26 : 20;
+  const meta = ROLE_META[user?.role];
+  const Icon = meta?.icon;
   return (
-    <div className={`${sizeClass} ${contact.color || 'bg-gray-500'} rounded-full flex items-center justify-center text-white font-black shrink-0 relative`}>
-      {contact.icon ? <contact.icon size={iconSize} /> : contact.avatar}
-      {contact.online !== undefined && (
-        <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${contact.online ? 'bg-green-400' : 'bg-gray-400'}`} />
-      )}
+    <div className={`${sizeClass} ${meta?.color || 'bg-gray-500'} rounded-full flex items-center justify-center text-white font-black shrink-0`}>
+      {Icon ? <Icon size={iconSize} /> : initials(user?.full_name)}
     </div>
   );
 };
 
 const MessageBubble = ({ msg, isOwn }) => (
   <div className={`flex items-end gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-    <div className={`max-w-[72%] group`}>
+    <div className="max-w-[72%] group">
       <div className={`px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed shadow-sm ${
-        isOwn
-          ? 'bg-pfuma-green text-white rounded-br-sm'
-          : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
+        isOwn ? 'bg-pfuma-green text-white rounded-br-sm' : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
       }`}>
-        {msg.text}
+        {msg.message}
       </div>
       <div className={`flex items-center gap-1 mt-1 px-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
-        <span className="text-[10px] text-gray-400 font-medium">{msg.time}</span>
-        {isOwn && (
-          msg.read
-            ? <CheckCheck size={12} className="text-blue-400" />
-            : <Check size={12} className="text-gray-400" />
-        )}
+        <span className="text-[10px] text-gray-400 font-medium">{fmtTime(msg.sent_at)}</span>
+        {isOwn && (msg.read_at ? <CheckCheck size={12} className="text-blue-400" /> : <Check size={12} className="text-gray-400" />)}
       </div>
     </div>
   </div>
 );
 
-const VetCommunication = ({ animals = [] }) => {
-  const [conversations, setConversations] = useState(INITIAL_CONVERSATIONS);
+// Debounced live search against real registered users, by name or phone.
+// The sidebar quick-search and the composer's "who do you want to message"
+// search are two INDEPENDENTLY visible inputs (the sidebar stays on screen
+// while the composer is open) — each needs its own query/results/loading
+// state. Sharing one set of state between them was the bug: clearing the
+// composer's search after a successful send also silently wiped the
+// sidebar's results while leaving its typed text behind.
+function useUserSearch(query, excludeUserId, authHeaders) {
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (query.trim().length < 2) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`${API}/users?q=${encodeURIComponent(query.trim())}`, { headers: authHeaders });
+        const data = res.ok ? await res.json() : [];
+        setResults(data.filter(u => u.id !== excludeUserId));
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, excludeUserId]);
+
+  return { results, searching };
+}
+
+const VetCommunication = ({ animals = [], currentUser }) => {
+  const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [activeMessages, setActiveMessages] = useState([]);
+  const [apiOnline, setApiOnline] = useState(true);
+
+  const [isComposing, setIsComposing] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
+  const [peopleQuery, setPeopleQuery] = useState('');
+
   const [chatInput, setChatInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [showHotlines, setShowHotlines] = useState(false);
   const [formError, setFormError] = useState('');
-  const [newCase, setNewCase] = useState({ category: 'Emergency', animalId: '', province: '', district: '', subject: '', description: '' });
+  const [sendBusy, setSendBusy] = useState(false);
+  const [newCase, setNewCase] = useState({ category: 'General', animalId: '', province: '', district: '', subject: '', description: '' });
 
   const chatEndRef = useRef(null);
-  const timeoutRefs = useRef([]);
   const inputRef = useRef(null);
 
-  useEffect(() => () => timeoutRefs.current.forEach(clearTimeout), []);
+  const authHeaders = { Authorization: `Bearer ${currentUser?.token}` };
+
+  // ── Conversation list (polls every 8s so unread counts / new messages
+  // from the other person show up without a manual refresh) ──
+  const loadConversations = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/conversations`, { headers: authHeaders });
+      if (!res.ok) throw new Error();
+      setConversations(await res.json());
+      setApiOnline(true);
+    } catch {
+      setApiOnline(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.token]);
+
+  useEffect(() => {
+    loadConversations();
+    const t = setInterval(loadConversations, 8000);
+    return () => clearInterval(t);
+  }, [loadConversations]);
+
+  // ── Active conversation's messages (polls every 4s while open) ──
+  const loadMessages = useCallback(async (convId) => {
+    if (!convId) return;
+    try {
+      const res = await fetch(`${API}/conversations/${convId}/messages`, { headers: authHeaders });
+      if (!res.ok) throw new Error();
+      setActiveMessages(await res.json());
+    } catch { /* offline — keep last known messages */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.token]);
+
+  useEffect(() => {
+    if (!activeConvId) { setActiveMessages([]); return; }
+    loadMessages(activeConvId);
+    const t = setInterval(() => loadMessages(activeConvId), 4000);
+    return () => clearInterval(t);
+  }, [activeConvId, loadMessages]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeConvId, conversations]);
+  }, [activeMessages]);
+
+  // Two fully independent live searches — see useUserSearch's comment above
+  // for why they must not share state.
+  const sidebarSearch  = useUserSearch(searchQuery, currentUser?.id, authHeaders);
+  const composerSearch = useUserSearch(peopleQuery, currentUser?.id, authHeaders);
 
   const activeConv = conversations.find(c => c.id === activeConvId);
-  const activeContact = activeConv ? CONTACTS.find(v => v.id === activeConv.contactId) : null;
-
-  const filteredContacts = activeFilter === 'All' ? CONTACTS : CONTACTS.filter(c => c.type === activeFilter);
 
   const filteredConvs = conversations.filter(c => {
-    const contact = CONTACTS.find(v => v.id === c.contactId) || CONTACTS[0];
-    const matchesFilter = activeFilter === 'All' || contact.type === activeFilter;
-    const matchesSearch = c.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.animal.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = activeFilter === 'All' || c.other_user?.role === activeFilter;
+    const matchesSearch = !searchQuery || c.other_user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
-  const handleSelectConv = (conv) => {
-    setActiveConvId(conv.id);
-    setIsCreating(false);
+  const openConversation = async (convId) => {
+    setActiveConvId(convId);
+    setIsComposing(false);
     setSelectedContact(null);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  const handleSelectContact = (contact) => {
-    if (contact.type === 'Vet') {
-      const existing = conversations.find(c => c.contactId === contact.id && c.status !== 'Certified');
-      if (existing) { handleSelectConv(existing); return; }
-      setSelectedContact(contact);
-      setIsCreating(true);
+  // Plain click on a non-vet person: start (or reuse) a general chat immediately.
+  const startGeneralChat = async (person) => {
+    setFormError('');
+    try {
+      const res = await fetch(`${API}/conversations`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ other_user_id: person.id, category: 'General' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.error || 'Could not start conversation.'); return; }
+      await loadConversations();
+      openConversation(data.id);
+    } catch {
+      setFormError('Could not reach the PFUMA API.');
+    }
+  };
+
+  const handlePickPerson = (person) => {
+    if (person.role === 'Veterinarian') {
+      // Structured intake — matches how a real DVS case would be opened.
+      setSelectedContact(person);
+      setIsComposing(true);
       setActiveConvId(null);
-      setNewCase(p => ({ ...p, category: 'Emergency', province: contact.province !== 'National' ? contact.province : '' }));
+      setNewCase(p => ({ ...p, category: 'Emergency', province: person.province || '' }));
       return;
     }
-
-    const existing = conversations.find(c => c.contactId === contact.id);
-    if (existing) { handleSelectConv(existing); return; }
-
-    const conv = {
-      id: Date.now(),
-      contactId: contact.id,
-      status: 'Active',
-      category: 'General',
-      animal: 'General',
-      province: contact.province,
-      priority: 'Routine',
-      subject: `Chat with ${contact.name}`,
-      createdAt: new Date().toLocaleDateString(),
-      messages: [
-        { id: 1, sender: 'Them', text: `Hi, I'm ${contact.name.split(' ')[0]}${contact.role ? ` from ${contact.role}` : ''}. How can I help?`, time: now(), read: true }
-      ]
-    };
-    setConversations(prev => [conv, ...prev]);
-    setIsCreating(false);
-    setSelectedContact(null);
-    setActiveConvId(conv.id);
+    startGeneralChat(person);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = sanitize(chatInput);
-    if (!text || !activeConv) return;
-    const newMsg = { id: Date.now(), sender: 'Me', text, time: now(), read: false };
-    setConversations(prev => prev.map(c =>
-      c.id === activeConvId ? { ...c, messages: [...c.messages, newMsg] } : c
-    ));
+    if (!text || !activeConvId || sendBusy) return;
+    setSendBusy(true);
     setChatInput('');
-    setIsTyping(true);
-    const convId = activeConvId;
-    const category = activeConv.category;
-    const contactType = activeContact?.type;
-    const t = setTimeout(() => {
-      setIsTyping(false);
-      const responses = contactType === 'Vet'
-        ? (AUTO_RESPONSES.Vet[category] || AUTO_RESPONSES.Vet.General)
-        : (AUTO_RESPONSES[contactType] || AUTO_RESPONSES.Vet.General);
-      const reply = responses[Math.floor(Math.random() * responses.length)];
-      const replyMsg = { id: Date.now() + 1, sender: 'Them', text: reply, time: now(), read: true };
-      setConversations(prev => prev.map(c =>
-        c.id === convId ? { ...c, messages: [...c.messages, replyMsg] } : c
-      ));
-    }, 1800 + Math.random() * 1500);
-    timeoutRefs.current.push(t);
+    try {
+      const res = await fetch(`${API}/conversations/${activeConvId}/messages`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      if (res.ok) {
+        await loadMessages(activeConvId);
+        await loadConversations();
+      } else {
+        const data = await res.json();
+        setFormError(data.error || 'Message could not be sent.');
+      }
+    } catch {
+      setFormError('Could not reach the PFUMA API — message not sent.');
+    } finally {
+      setSendBusy(false);
+    }
   };
 
-  const handleCreateCase = (e) => {
+  const handleCreateCase = async (e) => {
     e.preventDefault();
+    if (!selectedContact) { setFormError('Pick a vet to message first.'); return; }
     if (!newCase.subject.trim()) { setFormError('Please provide a subject.'); return; }
     setFormError('');
-    const contactToUse = selectedContact || CONTACTS[0];
-    const animalName = animals.find(a => a.id === parseInt(newCase.animalId, 10))?.name || 'General Inquiry';
-    const conv = {
-      id: Date.now(),
-      contactId: contactToUse.id,
-      status: newCase.category === 'Emergency' ? 'EMERGENCY' : 'Pending',
-      category: newCase.category,
-      animal: animalName,
-      province: newCase.province,
-      priority: newCase.category === 'Emergency' ? 'Critical' : 'Routine',
-      subject: newCase.subject,
-      createdAt: new Date().toLocaleDateString(),
-      isVideoAvailable: newCase.category === 'Emergency',
-      messages: newCase.description.trim()
-        ? [{ id: 1, sender: 'Me', text: sanitize(newCase.description), time: now(), read: false }]
-        : []
-    };
-    setConversations(prev => [conv, ...prev]);
-    setIsCreating(false);
-    setSelectedContact(null);
-    setActiveConvId(conv.id);
-    setNewCase({ category: 'Emergency', animalId: '', province: '', district: '', subject: '', description: '' });
-    const t = setTimeout(() => {
-      const responses = AUTO_RESPONSES.Vet[conv.category] || AUTO_RESPONSES.Vet.General;
-      const autoMsg = { id: Date.now(), sender: 'Them', text: responses[0], time: now(), read: true };
-      setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, messages: [...c.messages, autoMsg] } : c));
-    }, 3000);
-    timeoutRefs.current.push(t);
+    const animalId = newCase.animalId ? parseInt(newCase.animalId, 10) : null;
+    try {
+      const res = await fetch(`${API}/conversations`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          other_user_id: selectedContact.id, category: newCase.category,
+          subject: newCase.subject.trim(), animal_id: animalId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setFormError(data.error || 'Could not open case.'); return; }
+
+      if (newCase.description.trim()) {
+        await fetch(`${API}/conversations/${data.id}/messages`, {
+          method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: sanitize(newCase.description) }),
+        });
+      }
+      await loadConversations();
+      setIsComposing(false);
+      setSelectedContact(null);
+      setPeopleQuery('');
+      setNewCase({ category: 'General', animalId: '', province: '', district: '', subject: '', description: '' });
+      openConversation(data.id);
+    } catch {
+      setFormError('Could not reach the PFUMA API.');
+    }
   };
 
-  const getLastMessage = (conv) => {
-    if (!conv.messages.length) return 'Start the conversation...';
-    const last = conv.messages[conv.messages.length - 1];
-    return (last.sender === 'Me' ? 'You: ' : '') + last.text;
-  };
+  const closeComposer = () => { setIsComposing(false); setSelectedContact(null); setPeopleQuery(''); setFormError(''); };
 
   return (
     <div className="flex h-full bg-gray-100 overflow-hidden">
 
-      {/* ── LEFT PANEL ── */}
-      <div className="w-[360px] shrink-0 flex flex-col bg-white border-r border-gray-200 h-full">
+      {/* ── LEFT PANEL ── Full width on mobile (this IS the mobile home
+          view); fixed-width column alongside the right panel from md up.
+          On mobile it hides entirely once a conversation/composer is open —
+          master-detail, not squeezed side-by-side. */}
+      <div className={`w-full md:w-[360px] shrink-0 flex-col bg-white border-r border-gray-200 h-full ${(activeConvId || isComposing) ? 'hidden md:flex' : 'flex'}`}>
 
-        {/* Header */}
         <div className="px-5 pt-6 pb-4 border-b border-gray-100">
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-xl font-black text-gray-900">PFUMA Messenger</h2>
             <button
-              onClick={() => { setIsCreating(true); setSelectedContact(null); setActiveConvId(null); }}
+              onClick={() => { setIsComposing(true); setSelectedContact(null); setActiveConvId(null); setPeopleQuery(''); }}
               className="w-9 h-9 bg-pfuma-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition shadow-md"
-              aria-label="New case"
+              aria-label="New message"
             >
               <Plus size={18} />
             </button>
           </div>
-          <p className="text-[11px] text-gray-400 font-medium mb-4">Vets, suppliers, farmers & retailers</p>
+          <p className="text-[11px] text-gray-400 font-medium mb-4">Any verified PFUMA member can message any other — vets, suppliers, farmers &amp; retailers.</p>
+          {!apiOnline && (
+            <div className="mb-3 flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded-xl text-[11px] font-bold text-yellow-700">
+              Can't reach the PFUMA API — check the Flask backend is running.
+            </div>
+          )}
           <div className="relative mb-3">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search conversations..."
+              placeholder="Search by name or phone..."
               className="w-full pl-9 pr-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-pfuma-green/30"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {FILTERS.map(f => {
-              const active = activeFilter === f.key;
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => setActiveFilter(f.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap transition shrink-0 ${
-                    active ? 'bg-pfuma-green text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  <f.icon size={11} />
-                  {f.label}
-                </button>
-              );
-            })}
+            {FILTERS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setActiveFilter(f.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide whitespace-nowrap transition shrink-0 ${
+                  activeFilter === f.key ? 'bg-pfuma-green text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Quick Contact */}
-          <div className="px-5 pt-4 pb-2">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
-              {activeFilter === 'All' ? 'Quick Connect' : ROLE_META[activeFilter].label}
-            </p>
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-              {filteredContacts.map(contact => (
-                <button
-                  key={contact.id}
-                  onClick={() => handleSelectContact(contact)}
-                  className="flex flex-col items-center gap-1.5 shrink-0 group"
-                >
-                  <div className="relative">
-                    <div className={`w-14 h-14 ${contact.color} rounded-full flex items-center justify-center text-white font-black text-lg shadow-md group-hover:scale-110 transition`}>
-                      {contact.icon ? <contact.icon size={24} /> : contact.avatar}
-                    </div>
-                    <span className={`absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-white ${contact.online ? 'bg-green-400' : 'bg-gray-300'}`} />
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-600 text-center leading-tight max-w-[60px] truncate">{contact.name.split(' ')[1] || contact.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Alert Banner */}
-          {(activeFilter === 'All' || activeFilter === 'Vet') && (
-            <div className="mx-5 my-3 bg-red-50 border border-red-200 rounded-2xl p-3">
-              <div className="flex items-center gap-2 mb-0.5">
-                <BellRing size={12} className="text-red-500 animate-bounce shrink-0" />
-                <span className="text-[10px] font-black text-red-600 uppercase tracking-wide">Alert · Mashonaland West</span>
-              </div>
-              <p className="text-[11px] text-red-700 font-medium leading-snug">FMD outbreak in Chegutu. Restrict all livestock movement.</p>
+          {/* Live people search results — only while the search box has real input */}
+          {searchQuery.trim().length >= 2 && (
+            <div className="px-5 pt-4 pb-2 border-b border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                People {sidebarSearch.searching && <Loader2 size={11} className="animate-spin" />}
+              </p>
+              {sidebarSearch.results.filter(p => activeFilter === 'All' || p.role === activeFilter).length === 0 && !sidebarSearch.searching ? (
+                <p className="text-[11px] text-gray-400 font-medium pb-2">No verified members match "{searchQuery}".</p>
+              ) : (
+                <div className="space-y-1 pb-2">
+                  {sidebarSearch.results.filter(p => activeFilter === 'All' || p.role === activeFilter).map(person => (
+                    <button
+                      key={person.id}
+                      onClick={() => handlePickPerson(person)}
+                      className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition text-left"
+                    >
+                      <Avatar user={person} size="sm" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-800 truncate">{person.full_name}</p>
+                        <p className="text-[10px] text-gray-400 font-medium truncate">{person.role}{person.org_name ? ` · ${person.org_name}` : ''}{person.province ? ` · ${person.province}` : ''}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Conversations */}
-          <div className="px-5 pt-2">
+          <div className="px-5 pt-4 pb-2">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Conversations</p>
           </div>
           <div className="space-y-0">
             {filteredConvs.length === 0 ? (
-              <p className="text-center py-10 text-sm text-gray-400 font-medium">No conversations found</p>
+              <p className="text-center py-10 text-sm text-gray-400 font-medium px-6">
+                {conversations.length === 0
+                  ? 'No conversations yet — search above for someone to message.'
+                  : 'No conversations match this search/filter.'}
+              </p>
             ) : filteredConvs.map(conv => {
-              const contact = CONTACTS.find(v => v.id === conv.contactId) || CONTACTS[0];
+              const other = conv.other_user;
               const isActive = conv.id === activeConvId;
-              const lastMsg = getLastMessage(conv);
               return (
                 <button
                   key={conv.id}
-                  onClick={() => handleSelectConv(conv)}
+                  onClick={() => openConversation(conv.id)}
                   className={`w-full flex items-center gap-3 px-5 py-3.5 transition text-left ${isActive ? 'bg-green-50 border-r-4 border-pfuma-green' : 'hover:bg-gray-50'}`}
                 >
                   <div className="relative shrink-0">
-                    <div className={`w-12 h-12 ${contact.color} rounded-full flex items-center justify-center text-white font-black text-sm`}>
-                      {contact.icon ? <contact.icon size={20} /> : contact.avatar}
-                    </div>
-                    {conv.status === 'EMERGENCY' && (
-                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-[8px] font-black">!</span>
+                    <Avatar user={other} />
+                    {conv.unread_count > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-pfuma-green rounded-full flex items-center justify-center">
+                        <span className="text-white text-[9px] font-black">{conv.unread_count}</span>
                       </span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-sm font-bold text-gray-900 truncate">{contact.name}</span>
-                      <span className="text-[10px] text-gray-400 shrink-0 ml-2">{conv.createdAt}</span>
+                      <span className="text-sm font-bold text-gray-900 truncate">{other?.full_name || 'Unknown'}</span>
+                      <span className="text-[10px] text-gray-400 shrink-0 ml-2">{fmtDate(conv.last_message_at)}</span>
                     </div>
-                    <p className="text-[11px] text-gray-500 font-medium truncate">{lastMsg}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide ${
-                        conv.status === 'EMERGENCY' ? 'bg-red-100 text-red-600' :
-                        conv.status === 'Certified' ? 'bg-yellow-100 text-yellow-700' :
-                        conv.status === 'Active' ? 'bg-green-100 text-green-600' :
-                        'bg-blue-100 text-blue-600'
-                      }`}>{conv.status}</span>
-                      {conv.category !== 'General' && <span className="text-[10px] text-gray-400">· {conv.animal}</span>}
-                    </div>
+                    <p className={`text-[11px] font-medium truncate ${conv.unread_count > 0 ? 'text-gray-800 font-bold' : 'text-gray-500'}`}>
+                      {conv.last_message ? `${conv.last_message_is_own ? 'You: ' : ''}${conv.last_message}` : 'Start the conversation...'}
+                    </p>
+                    {conv.category !== 'General' && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide bg-blue-100 text-blue-600">{conv.category}</span>
+                        {conv.subject && <span className="text-[10px] text-gray-400 truncate">· {conv.subject}</span>}
+                      </div>
+                    )}
                   </div>
                 </button>
               );
@@ -433,12 +413,8 @@ const VetCommunication = ({ animals = [] }) => {
           </div>
         </div>
 
-        {/* Footer — Hotlines */}
         <div className="border-t border-gray-100 px-5 py-3">
-          <button
-            onClick={() => setShowHotlines(p => !p)}
-            className="flex items-center gap-2 text-[11px] font-bold text-gray-500 hover:text-pfuma-green transition w-full"
-          >
+          <button onClick={() => setShowHotlines(p => !p)} className="flex items-center gap-2 text-[11px] font-bold text-gray-500 hover:text-pfuma-green transition w-full">
             <Phone size={12} />
             <span>Emergency Hotlines</span>
             <ChevronDown size={12} className={`ml-auto transition ${showHotlines ? 'rotate-180' : ''}`} />
@@ -458,128 +434,156 @@ const VetCommunication = ({ animals = [] }) => {
         </div>
       </div>
 
-      {/* ── RIGHT PANEL ── */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      {/* ── RIGHT PANEL ── Hidden on mobile until a conversation/composer is
+          actually open, since the left panel is the mobile home view. */}
+      <div className={`flex-1 flex-col h-full overflow-hidden ${(activeConvId || isComposing) ? 'flex' : 'hidden md:flex'}`}>
 
-        {/* CREATE CASE FORM */}
-        {isCreating && (
+        {/* COMPOSE / NEW CASE */}
+        {isComposing && (
           <div className="flex-1 overflow-y-auto bg-gray-50">
             <div className="max-w-xl mx-auto px-6 py-8">
               <div className="flex items-center gap-4 mb-8">
-                <button onClick={() => setIsCreating(false)} className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-gray-100 transition">
+                <button onClick={closeComposer} className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm hover:bg-gray-100 transition">
                   <ArrowLeft size={18} className="text-gray-600" />
                 </button>
                 <div>
                   <h3 className="text-xl font-black text-gray-900">
-                    {selectedContact ? `Message ${selectedContact.name}` : 'New Case'}
+                    {selectedContact ? `Message ${selectedContact.full_name}` : 'New Message'}
                   </h3>
-                  {selectedContact && <p className="text-xs text-gray-400 font-medium">{selectedContact.speciality} · {selectedContact.province}</p>}
+                  {selectedContact && <p className="text-xs text-gray-400 font-medium">{selectedContact.role}{selectedContact.speciality ? ` · ${selectedContact.speciality}` : ''}{selectedContact.province ? ` · ${selectedContact.province}` : ''}</p>}
                 </div>
-                {selectedContact && <Avatar contact={selectedContact} size="md" />}
+                {selectedContact && <Avatar user={selectedContact} size="md" />}
               </div>
 
               {formError && (
                 <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold" role="alert">{formError}</div>
               )}
 
-              <form onSubmit={handleCreateCase} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-type">Case Type</label>
-                    <select id="cc-type" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.category} onChange={e => setNewCase(p => ({ ...p, category: e.target.value }))}>
-                      <option>Emergency</option>
-                      <option>Vaccination</option>
-                      <option>Trade Certification</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-animal">Animal</label>
-                    <select id="cc-animal" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.animalId} onChange={e => setNewCase(p => ({ ...p, animalId: e.target.value }))}>
-                      <option value="">Select animal...</option>
-                      {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-province">Province</label>
-                    <select id="cc-province" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.province} onChange={e => setNewCase(p => ({ ...p, province: e.target.value, district: '' }))}>
-                      <option value="">Select province...</option>
-                      {Object.keys(ZIMBABWE_REGIONS).map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-district">District</label>
-                    <select id="cc-district" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.district} onChange={e => setNewCase(p => ({ ...p, district: e.target.value }))} disabled={!newCase.province}>
-                      <option value="">Select district...</option>
-                      {(ZIMBABWE_REGIONS[newCase.province] || []).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                </div>
-
+              {!selectedContact ? (
                 <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-subject">Subject <span className="text-red-400">*</span></label>
-                  <input
-                    id="cc-subject"
-                    type="text"
-                    required
-                    maxLength={120}
-                    placeholder="e.g. Suspected FMD — Chegutu Farm"
-                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30"
-                    value={newCase.subject}
-                    onChange={e => setNewCase(p => ({ ...p, subject: e.target.value }))}
-                  />
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-search">Who do you want to message? <span className="text-red-400">*</span></label>
+                  <div className="relative mb-3">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      id="cc-search" type="text" autoFocus
+                      placeholder="Search by name or phone number..."
+                      className="w-full pl-10 p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30"
+                      value={peopleQuery}
+                      onChange={e => setPeopleQuery(e.target.value)}
+                    />
+                  </div>
+                  {peopleQuery.trim().length >= 2 && (
+                    <div className="space-y-1 bg-white rounded-xl border border-gray-100 p-2">
+                      {composerSearch.searching ? (
+                        <p className="text-xs text-gray-400 font-medium p-3 text-center">Searching...</p>
+                      ) : composerSearch.results.length === 0 ? (
+                        <p className="text-xs text-gray-400 font-medium p-3 text-center">No verified members found.</p>
+                      ) : composerSearch.results.map(person => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          onClick={() => handlePickPerson(person)}
+                          className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-50 transition text-left"
+                        >
+                          <Avatar user={person} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-800 truncate">{person.full_name}</p>
+                            <p className="text-[10px] text-gray-400 font-medium truncate">{person.role}{person.org_name ? ` · ${person.org_name}` : ''}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-desc">Initial Message</label>
-                  <textarea
-                    id="cc-desc"
-                    rows={4}
-                    maxLength={500}
-                    placeholder="Describe symptoms, timeline, and animals affected..."
-                    className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30 resize-none"
-                    value={newCase.description}
-                    onChange={e => setNewCase(p => ({ ...p, description: e.target.value }))}
-                  />
-                  <p className="text-right text-[10px] text-gray-400 mt-1">{newCase.description.length}/500</p>
+              ) : selectedContact.role !== 'Veterinarian' ? (
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700 font-medium">
+                  Starting a direct message with {selectedContact.full_name}...
                 </div>
+              ) : (
+                <form onSubmit={handleCreateCase} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-type">Case Type</label>
+                      <select id="cc-type" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.category} onChange={e => setNewCase(p => ({ ...p, category: e.target.value }))}>
+                        <option>Emergency</option>
+                        <option>Vaccination</option>
+                        <option>Trade Certification</option>
+                        <option value="General">General</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-animal">Animal</label>
+                      <select id="cc-animal" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.animalId} onChange={e => setNewCase(p => ({ ...p, animalId: e.target.value }))}>
+                        <option value="">Select animal...</option>
+                        {animals.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-province">Province</label>
+                      <select id="cc-province" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.province} onChange={e => setNewCase(p => ({ ...p, province: e.target.value, district: '' }))}>
+                        <option value="">Select province...</option>
+                        {Object.keys(ZIMBABWE_REGIONS).map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-district">District</label>
+                      <select id="cc-district" className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30" value={newCase.district} onChange={e => setNewCase(p => ({ ...p, district: e.target.value }))} disabled={!newCase.province}>
+                        <option value="">Select district...</option>
+                        {(ZIMBABWE_REGIONS[newCase.province] || []).map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
 
-                <button type="submit" className="w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
-                  <Send size={16} /> Send to {selectedContact?.name || 'Duty Vet'}
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-subject">Subject <span className="text-red-400">*</span></label>
+                    <input
+                      id="cc-subject" type="text" required maxLength={120}
+                      placeholder="e.g. Suspected FMD — Chegutu Farm"
+                      className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30"
+                      value={newCase.subject}
+                      onChange={e => setNewCase(p => ({ ...p, subject: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5" htmlFor="cc-desc">Initial Message</label>
+                    <textarea
+                      id="cc-desc" rows={4} maxLength={2000}
+                      placeholder="Describe symptoms, timeline, and animals affected..."
+                      className="w-full p-3 bg-white rounded-xl border border-gray-200 font-medium text-sm outline-none focus:ring-2 focus:ring-pfuma-green/30 resize-none"
+                      value={newCase.description}
+                      onChange={e => setNewCase(p => ({ ...p, description: e.target.value }))}
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full py-4 bg-pfuma-green text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
+                    <Send size={16} /> Send to {selectedContact?.full_name}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )}
 
         {/* ACTIVE CONVERSATION */}
-        {!isCreating && activeConv && (
+        {!isComposing && activeConv && (
           <>
-            {/* Chat Header */}
             <div className="px-5 py-3.5 bg-white border-b border-gray-100 flex items-center gap-3 shadow-sm">
-              <button onClick={() => setActiveConvId(null)} className="md:hidden w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-800">
+              <button onClick={() => setActiveConvId(null)} className="md:hidden w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-800" aria-label="Back to conversations">
                 <ArrowLeft size={18} />
               </button>
-              {activeContact && <Avatar contact={activeContact} size="md" />}
+              <Avatar user={activeConv.other_user} size="md" />
               <div className="flex-1 min-w-0">
-                <h4 className="font-black text-gray-900 text-sm leading-none mb-0.5">{activeContact?.name}</h4>
+                <h4 className="font-black text-gray-900 text-sm leading-none mb-0.5">{activeConv.other_user?.full_name}</h4>
                 <p className="text-[11px] text-gray-500 font-medium">
-                  {activeContact?.online ? (
-                    <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />Online · {activeContact.speciality}</span>
-                  ) : (
-                    <span className="text-gray-400">Offline · {activeContact?.speciality}</span>
-                  )}
+                  {activeConv.other_user?.role}{activeConv.other_user?.org_name ? ` · ${activeConv.other_user.org_name}` : ''}
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {activeConv.status === 'EMERGENCY' && (
+                {activeConv.category === 'Emergency' && (
                   <span className="flex items-center gap-1 bg-red-600 text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest animate-pulse">
-                    <Zap size={10} /> LIVE
+                    <Zap size={10} /> URGENT
                   </span>
-                )}
-                {activeConv.isVideoAvailable && (
-                  <button className="w-9 h-9 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-100 transition" aria-label="Video consult">
-                    <Video size={18} />
-                  </button>
                 )}
                 <button className="w-9 h-9 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center hover:bg-gray-200 transition" aria-label="Voice call">
                   <PhoneCall size={17} />
@@ -590,58 +594,37 @@ const VetCommunication = ({ animals = [] }) => {
               </div>
             </div>
 
-            {/* Case Info Strip */}
             {activeConv.category !== 'General' && (
               <div className="px-5 py-2 bg-yellow-50 border-b border-yellow-100 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className={`px-2 py-0.5 rounded-full font-black uppercase text-[10px] ${
-                    activeConv.status === 'EMERGENCY' ? 'bg-red-100 text-red-600' :
-                    activeConv.status === 'Certified' ? 'bg-green-100 text-green-700' :
-                    'bg-blue-100 text-blue-600'
-                  }`}>{activeConv.status}</span>
+                  <span className="px-2 py-0.5 rounded-full font-black uppercase text-[10px] bg-blue-100 text-blue-600">{activeConv.category}</span>
                   <span className="text-gray-500 font-medium">{activeConv.subject}</span>
-                  <span className="text-gray-400">· {activeConv.animal}</span>
-                  {activeConv.province && <span className="flex items-center gap-1 text-gray-400"><MapPin size={10} />{activeConv.province}</span>}
                 </div>
-                {activeConv.certificateIssued && (
-                  <div className="flex items-center gap-1 text-[10px] font-black text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">
-                    <ShieldCheck size={11} /> Certified
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Messages */}
             <div
               className="flex-1 overflow-y-auto px-5 py-5 space-y-3"
               style={{ background: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.3\'%3E%3Ccircle cx=\'1\' cy=\'1\' r=\'1\'/%3E%3C/g%3E%3C/svg%3E"), #f0f2f5' }}
               role="log"
               aria-label="Conversation"
             >
-              {/* Date separator */}
               <div className="flex justify-center">
-                <span className="bg-white text-[10px] font-bold text-gray-400 px-3 py-1 rounded-full shadow-sm border border-gray-100">{activeConv.createdAt}</span>
+                <span className="bg-white text-[10px] font-bold text-gray-400 px-3 py-1 rounded-full shadow-sm border border-gray-100">{fmtDate(activeConv.created_at)}</span>
               </div>
 
-              {activeConv.messages.map(msg => (
-                <MessageBubble key={msg.id} msg={msg} isOwn={msg.sender === 'Me'} />
+              {activeMessages.length === 0 ? (
+                <p className="text-center text-xs text-gray-400 font-medium py-8">No messages yet — say hello.</p>
+              ) : activeMessages.map(msg => (
+                <MessageBubble key={msg.id} msg={msg} isOwn={msg.sender_id === currentUser?.id} />
               ))}
-
-              {isTyping && (
-                <div className="flex items-end gap-2">
-                  {activeContact && <Avatar contact={activeContact} size="sm" />}
-                  <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm border border-gray-100 shadow-sm flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              )}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input */}
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
+            {/* pr-24 keeps the send button clear of the fixed Jinda AI chat
+                bubble, which sits at bottom-right of the whole viewport and
+                would otherwise sit on top of it and block clicks. */}
+            <div className="px-4 pr-24 py-3 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-200 focus-within:border-pfuma-green/50 focus-within:shadow-md transition">
                 <button className="text-gray-400 hover:text-pfuma-green transition shrink-0" aria-label="Attach file"><Paperclip size={18} /></button>
                 <input
@@ -650,15 +633,14 @@ const VetCommunication = ({ animals = [] }) => {
                   placeholder="Type a message..."
                   className="flex-1 bg-transparent outline-none text-sm font-medium text-gray-800 placeholder:text-gray-400 min-w-0"
                   value={chatInput}
-                  maxLength={500}
+                  maxLength={2000}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   aria-label="Message"
                 />
-                <button className="text-gray-400 hover:text-pfuma-green transition shrink-0" aria-label="Emoji"><Smile size={18} /></button>
                 <button
                   onClick={handleSend}
-                  disabled={!chatInput.trim()}
+                  disabled={!chatInput.trim() || sendBusy}
                   className="w-9 h-9 bg-pfuma-green text-white rounded-full flex items-center justify-center hover:bg-green-700 transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-md"
                   aria-label="Send"
                 >
@@ -666,44 +648,28 @@ const VetCommunication = ({ animals = [] }) => {
                 </button>
               </div>
               <p className="flex items-center justify-center gap-1 text-center text-[10px] text-gray-400 font-medium mt-2">
-                <Lock size={10} /> Encrypted · Logged with Zimbabwe DVS
+                <Lock size={10} /> Messages are stored on your PFUMA account
               </p>
             </div>
           </>
         )}
 
         {/* EMPTY STATE */}
-        {!isCreating && !activeConv && (
+        {!isComposing && !activeConv && (
           <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 text-center px-8">
             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg mb-6 border border-gray-100">
-              <Zap size={40} className="text-pfuma-green" />
+              <Users size={40} className="text-pfuma-green" />
             </div>
             <h3 className="text-2xl font-black text-gray-800 mb-2">PFUMA Messenger</h3>
             <p className="text-gray-400 font-medium text-sm max-w-xs leading-relaxed mb-8">
-              Connect with vets, suppliers, farmers & retailers across Zimbabwe. Pick a contact above or open a conversation.
+              Search for anyone by name or phone number — vets, suppliers, farmers, or retailers — and start a real conversation.
             </p>
-            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-              <button
-                onClick={() => { setIsCreating(true); setSelectedContact(CONTACTS[0]); }}
-                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-pfuma-green shadow-sm hover:shadow-md transition group"
-              >
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                  <Zap size={24} className="text-red-500" />
-                </div>
-                <span className="text-sm font-black text-gray-800">Emergency</span>
-                <span className="text-[10px] text-gray-400 font-medium mt-1">Immediate response</span>
-              </button>
-              <button
-                onClick={() => { setIsCreating(true); setSelectedContact(CONTACTS[1]); setNewCase(p => ({ ...p, category: 'Trade Certification' })); }}
-                className="flex flex-col items-center p-5 bg-white rounded-2xl border-2 border-transparent hover:border-pfuma-green shadow-sm hover:shadow-md transition group"
-              >
-                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                  <ShieldCheck size={24} className="text-pfuma-green" />
-                </div>
-                <span className="text-sm font-black text-gray-800">Certification</span>
-                <span className="text-[10px] text-gray-400 font-medium mt-1">Trade & movement</span>
-              </button>
-            </div>
+            <button
+              onClick={() => { setIsComposing(true); setSelectedContact(null); setPeopleQuery(''); }}
+              className="flex items-center gap-2 px-6 py-3 bg-pfuma-green text-white rounded-2xl font-black text-sm shadow-lg hover:bg-green-700 transition"
+            >
+              <Plus size={16} /> New Message
+            </button>
           </div>
         )}
       </div>

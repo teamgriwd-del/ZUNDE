@@ -562,33 +562,35 @@ const AuthPortal = ({ onLogin }) => {
 
   // ── render ──
   return (
-    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-gray-950 overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-gray-950 overflow-hidden font-sans p-0 sm:p-4">
       {/* Background glows */}
       <div className="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] bg-pfuma-green/20 rounded-full blur-[140px]" aria-hidden="true" />
       <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] bg-yellow-400/10 rounded-full blur-[140px]" aria-hidden="true" />
 
-      <div className="bg-white w-full max-w-5xl rounded-[40px] shadow-2xl overflow-hidden flex relative z-10 animate-in fade-in zoom-in duration-400" style={{ height: 680 }}>
+      <div className="bg-white w-full max-w-5xl rounded-none sm:rounded-[40px] shadow-2xl overflow-y-auto sm:overflow-hidden flex flex-col md:flex-row relative z-10 animate-in fade-in zoom-in duration-400 h-full sm:h-auto sm:max-h-[95vh] md:h-[680px]">
 
         {/* ── Left branding panel ── */}
-        <div className="w-[38%] bg-pfuma-green p-12 text-white flex flex-col justify-between relative overflow-hidden">
+        <div className="w-full md:w-[38%] bg-pfuma-green p-6 md:p-12 text-white flex flex-col justify-between relative overflow-hidden shrink-0">
           {/* Dot grid */}
           <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} aria-hidden="true" />
 
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-pfuma-green font-black text-2xl shadow-lg">P</div>
+            <div className="flex items-center gap-3 mb-3 md:mb-8">
+              <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-pfuma-green font-black text-2xl shadow-lg shrink-0">P</div>
               <div>
                 <p className="text-base font-black tracking-tight leading-none">PFUMA</p>
               </div>
             </div>
-            <h2 className="text-3xl font-black leading-tight mb-4">Zimbabwe's Livestock Intelligence Platform</h2>
-            <p className="text-green-200 text-sm font-medium leading-relaxed opacity-80">
+            <h2 className="text-xl md:text-3xl font-black leading-tight mb-2 md:mb-4">Zimbabwe's Livestock Intelligence Platform</h2>
+            <p className="hidden md:block text-green-200 text-sm font-medium leading-relaxed opacity-80">
               Connecting farmers, veterinarians, suppliers, and retailers into one verified digital ecosystem.
             </p>
           </div>
 
-          {/* Stakeholder roles preview */}
-          <div className="relative z-10 space-y-2">
+          {/* Stakeholder roles preview — full detail on desktop; a compact
+              horizontal strip on mobile to save vertical space, since the
+              form below is what actually matters most on a small screen. */}
+          <div className="relative z-10 hidden md:block space-y-2">
             {ROLES.map(r => (
               <div key={r.name} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${form.role === r.name && !isReturning ? 'bg-white/20 border border-white/30' : 'opacity-40'}`}>
                 <div className="w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
@@ -601,14 +603,22 @@ const AuthPortal = ({ onLogin }) => {
               </div>
             ))}
           </div>
+          <div className="relative z-10 flex md:hidden gap-2 overflow-x-auto pb-1 mt-3 scrollbar-hide">
+            {ROLES.map(r => (
+              <div key={r.name} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 transition ${form.role === r.name && !isReturning ? 'bg-white/20 border border-white/30' : 'opacity-40'}`}>
+                <r.icon size={12} className="text-white shrink-0" />
+                <p className="text-[10px] font-black text-white leading-none whitespace-nowrap">{r.name}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* ── Right form panel ── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
 
           {isReturning ? (
             /* ── Quick Login ── */
-            <div className="flex-1 overflow-y-auto p-12 text-left">
+            <div className="flex-1 overflow-y-auto p-6 md:p-12 text-left">
               <h3 className="text-2xl font-black text-gray-900 mb-1">Welcome Back</h3>
               <p className="text-sm text-gray-400 font-medium mb-8">Sign in with your phone number and password. Your role comes from your verified PFUMA account.</p>
 
@@ -649,7 +659,7 @@ const AuthPortal = ({ onLogin }) => {
             /* ── Multi-step Registration ── */
             <>
               {/* Progress bar */}
-              <div className="px-10 pt-8 pb-0">
+              <div className="px-5 md:px-10 pt-5 md:pt-8 pb-0">
                 <div className="flex items-center gap-1 mb-2">
                   {STEPS.map((s, i) => (
                     <React.Fragment key={s}>
@@ -670,12 +680,12 @@ const AuthPortal = ({ onLogin }) => {
               </div>
 
               {/* Step content */}
-              <div className="flex-1 overflow-y-auto px-10 py-6">
+              <div className="flex-1 overflow-y-auto px-5 md:px-10 py-6">
                 {stepContent[step]()}
               </div>
 
               {/* Navigation */}
-              <div className="px-10 pb-8 flex gap-3">
+              <div className="px-5 md:px-10 pb-5 md:pb-8 flex gap-3">
                 {step > 0 && (
                   <button onClick={back} className="flex items-center gap-2 px-5 py-3.5 bg-gray-100 text-gray-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition">
                     <ArrowLeft size={14} /> Back

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { diseaseDatabase, symptomCategories } from './diseaseData';
+import { analyzePhotoPixels, classifyPhotoAnalysis } from './photoAnalysis';
 import {
   Bot, MapPin, AlertTriangle, Info, ShieldCheck, Leaf,
   ChevronDown, ChevronUp, Search, Stethoscope, ClipboardList,
@@ -108,14 +109,23 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
     feedbackTimer.current = setTimeout(() => setSavedFeedback(null), 3000);
   };
 
-  const handleImageUpload = () => {
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setIsAnalyzingImage(true);
     setVisualResult(null);
-    setTimeout(() => {
+    try {
+      const pixels = await analyzePhotoPixels(file);
+      const result = classifyPhotoAnalysis(pixels);
+      setVisualResult(result);
+      if (result.suggested.length) {
+        setSelectedSymptoms(prev => [...new Set([...prev, ...result.suggested])]);
+      }
+    } catch {
+      setVisualResult({ headline: 'Could not analyze photo', detail: 'That image could not be read — try a different photo.', suggested: [] });
+    } finally {
       setIsAnalyzingImage(false);
-      setVisualResult({ detected: 'Skin Nodules & Inflammation', confidence: '92%', recommendation: 'Visual signs strongly correlate with Lumpy Skin Disease.' });
-      setSelectedSymptoms(prev => [...new Set([...prev, 'skin nodules', 'enlarged lymph nodes', 'fever'])]);
-    }, 2500);
+    }
   };
 
   const resetAll = () => {
@@ -164,10 +174,10 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
       </div>
 
       {/* ── MAIN GRID ── */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ─ LEFT 2/3 ─ */}
-        <div className="col-span-2 space-y-5">
+        <div className="lg:col-span-2 space-y-5">
 
           {/* STEP 1 — Animal */}
           <div className={`bg-white border-2 rounded-2xl p-5 transition ${step1done ? 'border-pfuma-green' : 'border-gray-100'}`}>
@@ -205,7 +215,7 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
               <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-[10px] font-black">📷</div>
               <h3 className="text-sm font-black text-gray-800">Photo Check <span className="text-gray-400 font-medium text-xs">(Optional shortcut)</span></h3>
             </div>
-            <p className="text-[11px] text-gray-400 font-medium mb-4">Upload a clear photo of the animal's skin, mouth, or legs. The AI will automatically tick matching symptoms for you.</p>
+            <p className="text-[11px] text-gray-400 font-medium mb-4">Upload a clear photo of the animal's skin, mouth, or legs. We'll scan it for visible discoloration and texture patterns and suggest symptoms to check — this is a coarse visual heuristic, not a diagnosis, so always verify against what you see in person.</p>
 
             {isAnalyzingImage ? (
               <div className="flex items-center gap-4 py-4">
@@ -213,8 +223,8 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                   <div className="w-6 h-6 border-3 border-pfuma-green border-t-transparent rounded-full animate-spin" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-pfuma-green">Analysing photo...</p>
-                  <p className="text-[11px] text-gray-400 font-medium">Scanning for skin lesions, inflammation, and visible symptoms</p>
+                  <p className="text-sm font-black text-pfuma-green">Scanning photo...</p>
+                  <p className="text-[11px] text-gray-400 font-medium">Reading pixel colour and texture patterns</p>
                 </div>
               </div>
             ) : visualResult ? (
@@ -224,11 +234,15 @@ const DiseaseDetection = ({ animals = [], onAddAuditLog }) => {
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] font-black bg-pfuma-green text-white px-2 py-0.5 rounded-full uppercase">Photo Match</span>
-                    <span className="text-[10px] text-gray-500 font-bold">{visualResult.confidence} confidence</span>
+                    <span className="text-[9px] font-black bg-pfuma-green text-white px-2 py-0.5 rounded-full uppercase">Photo Scan · Heuristic</span>
                   </div>
-                  <p className="text-sm font-black text-gray-800">{visualResult.detected}</p>
-                  <p className="text-[11px] text-gray-500 font-medium mt-1">{visualResult.recommendation} Matching symptoms have been ticked below.</p>
+                  <p className="text-sm font-black text-gray-800">{visualResult.headline}</p>
+                  <p className="text-[11px] text-gray-500 font-medium mt-1">
+                    {visualResult.detail}{' '}
+                    {visualResult.suggested?.length
+                      ? `Suggested symptom${visualResult.suggested.length > 1 ? 's' : ''} ticked below: ${visualResult.suggested.join(', ')}.`
+                      : 'No symptoms were auto-ticked — check the list below manually based on what you observe.'}
+                  </p>
                   <button onClick={() => setVisualResult(null)} className="mt-2 text-[10px] font-black text-gray-400 hover:text-red-500 uppercase underline">Remove photo</button>
                 </div>
               </div>

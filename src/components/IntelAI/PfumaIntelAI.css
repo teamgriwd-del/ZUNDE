@@ -16,6 +16,20 @@
   box-shadow: 0 10px 30px rgba(27, 94, 32, 0.4);
 }
 
+/* On phone-width screens the 70px FAB at 2rem from the edge eats into
+   content that also lives in the bottom-right corner (send buttons, submit
+   buttons, etc. across many screens) — shrink and tuck it in rather than
+   patch every individual screen that happens to have something there. */
+@media (max-width: 480px) {
+  .pfuma-ai-toggle {
+    width: 52px;
+    height: 52px;
+    bottom: 1rem;
+    right: 1rem;
+    border-radius: 18px;
+  }
+}
+
 .ping-online {
   position: absolute;
   top: -2px;
