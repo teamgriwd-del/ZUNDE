@@ -49,9 +49,9 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto p-10 bg-[#fdfcf9] text-left">
-        <div className="grid grid-cols-3 gap-10">
-          <div className="col-span-1 space-y-5">
+      <div className="flex-1 overflow-y-auto p-5 md:p-10 bg-[#fdfcf9] text-left">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
+          <div className="lg:col-span-1 space-y-5">
             <div className="w-full aspect-square rounded-3xl overflow-hidden border-4 border-white shadow-xl bg-gray-100">
               <img src={animal.imageUrl} className="w-full h-full object-cover" alt={animal.name} />
             </div>
@@ -65,7 +65,7 @@ const HealthPassport = ({ animal, auditLog, onClose }) => (
             </div>
           </div>
 
-          <div className="col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8">
             <section>
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-[4px] mb-5 border-b pb-2">Identity Details</h3>
               <div className="grid grid-cols-2 gap-6">
@@ -281,7 +281,7 @@ const AnimalProfile = ({ animals, onAddAnimal, auditLog, onListAnimal }) => {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
                 <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Age</p>
                 <p className="text-lg font-black text-gray-900">{selectedAnimal.age}</p>

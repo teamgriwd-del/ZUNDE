@@ -16,7 +16,7 @@ import {
   Truck, BarChart3, Globe, AlertTriangle, CheckCircle, ChevronRight,
   Zap, Clock, ArrowRight, Tag, Pill, Wifi, MapPin, FileText,
   RefreshCw, DollarSign, Target, Box, PhoneCall, Star, Wheat, Store,
-  Sprout, Check, Syringe, Shield, UserPlus, X
+  Sprout, Check, Syringe, Shield, UserPlus, X, Menu
 } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip, CartesianGrid, XAxis, YAxis } from 'recharts';
 import './App.css';
@@ -247,7 +247,7 @@ const FarmerDashboard = ({ animals, auditLog, inventory, notifications, setActiv
         <KpiCard label="Listed for Sale"  value={forSale}                   sub={forSale ? 'Visible on marketplace' : 'None listed yet'} icon={ShoppingCart} iconColor="text-purple-500" onClick={() => setActiveTab('profile')} />
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left: Priority Actions + Quick Nav */}
         <div className="col-span-1 space-y-5">
@@ -557,7 +557,7 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Active Outbreaks',  value: '1',   sub: 'FMD — Chegutu District',          icon: AlertTriangle, iconColor: 'text-red-500',   accent: 'bg-red-500/10 border-red-500/20',   textColor: 'text-red-400' },
           { label: 'Cert. Queue',       value: '12',  sub: 'Awaiting your sign-off',           icon: FileText,      iconColor: 'text-yellow-400', accent: 'bg-white/5 border-white/10',       textColor: 'text-white'   },
@@ -575,7 +575,7 @@ const VeterinarianDashboard = ({ animals, notifications, setActiveTab, currentUs
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Outbreak alert */}
         <div className="col-span-1 space-y-5">
@@ -732,7 +732,7 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Pending Orders',   value: pending,     sub: 'Need dispatch today',              icon: Clock,       iconColor: 'text-pfuma-gold', accent: pending ? 'bg-pfuma-gold/10 border-pfuma-gold/30' : 'bg-white border-gray-100', textColor: pending ? 'text-amber-700' : 'text-gray-900' },
           { label: 'In Transit',       value: dispatched,  sub: 'On the way to farmers',            icon: Truck,       iconColor: 'text-blue-500',   accent: 'bg-white border-gray-100', textColor: 'text-gray-900' },
@@ -747,7 +747,7 @@ const SupplierDashboard = ({ inventory, setActiveTab, currentUser }) => {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Orders list */}
         <div className="col-span-2">
@@ -881,7 +881,7 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Active Listings',    value: listings.length,                           sub: 'Verified with health passports',   icon: Tag,        iconColor: 'text-pfuma-plum' },
           { label: 'Avg. Price / Unit',  value: listings.length ? `$${Math.round(listings.reduce((a, l) => a + 500 + l.currentWeight * 1.5, 0) / listings.length).toLocaleString()}` : '$—', sub: 'Estimated market value',          icon: DollarSign, iconColor: 'text-green-500'  },
@@ -896,7 +896,7 @@ const RetailerDashboard = ({ animals, setActiveTab, currentUser }) => {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Listings */}
         <div className="col-span-2 space-y-5">
@@ -1226,7 +1226,7 @@ const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-[11px] text-gray-400 font-bold space-y-1 block">
               Full Name *
               <input required value={officerForm.full_name} onChange={e => setOfficerField('full_name', e.target.value)}
@@ -1285,7 +1285,7 @@ const PoliceDashboard = ({ currentUser, setActiveTab, notifications }) => {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <div className="flex justify-between items-start mb-2"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pending Signups</p><ShieldCheck size={16} className="text-yellow-400" /></div>
           <p className="text-3xl font-black text-white">{verifications.length}</p>
@@ -1553,6 +1553,7 @@ function App() {
     { id: 2, title: 'Vaccine Recall',         msg: 'Lot #992 Oxytetracycline recalled by supplier.',  type: 'Info',     time: '4h ago' },
   ]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const authFetch = useCallback((path, opts = {}) => fetch(`${API}${path}`, {
     ...opts,
@@ -1652,17 +1653,39 @@ function App() {
   const activeBg    = ROLE_ACTIVE_BG[role] || 'bg-white/10';
 
   return (
-    <div className="flex h-screen bg-gray-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-gray-100 font-sans overflow-hidden relative">
 
-      {/* ── SIDEBAR ── */}
-      <aside className={`w-64 flex flex-col shrink-0 ${sidebarBg} text-white relative z-20`}>
+      {/* Backdrop — closes the mobile nav drawer when tapped outside it */}
+      {isMobileNavOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* ── SIDEBAR ── Fixed off-canvas drawer below the lg breakpoint,
+          normal static column at lg and above. */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-40 w-64 flex flex-col shrink-0 ${sidebarBg} text-white
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:static lg:translate-x-0 lg:z-20
+      `}>
 
         {/* Logo */}
         <div className="px-6 pt-6 pb-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-pfuma-green font-black text-2xl shadow-lg shrink-0">P</div>
-          <div>
+          <div className="flex-1">
             <span className="text-base font-black tracking-tighter block leading-none">PFUMA</span>
           </div>
+          <button
+            onClick={() => setIsMobileNavOpen(false)}
+            className="lg:hidden w-8 h-8 flex items-center justify-center text-white/60 hover:text-white transition"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Nav */}
@@ -1676,7 +1699,7 @@ function App() {
                   return (
                     <button
                       key={item.tab}
-                      onClick={() => setActiveTab(item.tab)}
+                      onClick={() => { setActiveTab(item.tab); setIsMobileNavOpen(false); }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition text-left ${isActive ? `${activeBg} text-white` : 'text-white/40 hover:bg-white/5 hover:text-white/80'}`}
                     >
                       <item.icon size={16} className={isActive ? 'text-yellow-400' : ''} aria-hidden="true" />
@@ -1714,7 +1737,21 @@ function App() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main className="flex-1 flex flex-col overflow-hidden bg-white relative">
+      <main className="flex-1 flex flex-col overflow-hidden bg-white relative w-full min-w-0">
+
+        {/* Mobile top bar — hamburger + logo, only shown below lg since the
+            sidebar is off-canvas there and this is the only way back to it. */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-100 shrink-0">
+          <button
+            onClick={() => setIsMobileNavOpen(true)}
+            className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-gray-900 transition"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center text-pfuma-green font-black text-sm shadow shrink-0">P</div>
+          <span className="text-sm font-black text-gray-900 tracking-tight">PFUMA</span>
+        </div>
 
         {/* Notification bell */}
         <div className="absolute top-4 right-5 z-30">

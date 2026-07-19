@@ -192,6 +192,42 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (sender_id) REFERENCES users(id)     ON DELETE SET NULL
 );
 
+-- ── PFUMA MESSENGER (real direct messaging, any verified user to any
+-- other) ─────────────────────────────────────────────────────────
+-- Distinct from vet_cases/messages above (an older, narrower farmer<->vet
+-- case-ticket concept that was never wired to a route). A conversation is
+-- a thread between two users, optionally tagged with a subject/category
+-- (e.g. a farmer's "Emergency" or "Trade Certification" message to a vet
+-- carries that context) — but the underlying mechanism is general-purpose:
+-- any verified user can message any other verified user directly.
+CREATE TABLE IF NOT EXISTS conversations (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  user_a_id        INT NOT NULL,        -- conversation creator
+  user_b_id        INT NOT NULL,        -- the person they messaged
+  subject          VARCHAR(200),
+  category         ENUM('Emergency','Vaccination','Trade Certification','General') DEFAULT 'General',
+  animal_id        INT NULL,
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_message_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_a_id) REFERENCES users(id)   ON DELETE CASCADE,
+  FOREIGN KEY (user_b_id) REFERENCES users(id)   ON DELETE CASCADE,
+  FOREIGN KEY (animal_id) REFERENCES animals(id) ON DELETE SET NULL
+);
+CREATE INDEX idx_conversations_user_a ON conversations (user_a_id, last_message_at DESC);
+CREATE INDEX idx_conversations_user_b ON conversations (user_b_id, last_message_at DESC);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  conversation_id  INT NOT NULL,
+  sender_id        INT NOT NULL,
+  message          TEXT NOT NULL,
+  sent_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  read_at          TIMESTAMP NULL,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+  FOREIGN KEY (sender_id)       REFERENCES users(id)          ON DELETE CASCADE
+);
+CREATE INDEX idx_conv_messages_conv_time ON conversation_messages (conversation_id, sent_at);
+
 -- ── FEED TYPES (Addy's Feed Analyzer) ────────────────────────
 CREATE TABLE IF NOT EXISTS feed_types (
   id               INT AUTO_INCREMENT PRIMARY KEY,
